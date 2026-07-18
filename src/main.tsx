@@ -1,5 +1,6 @@
 import { render } from 'preact'
-import '@fontsource-variable/outfit/index.css'
+import '@fontsource-variable/geist/index.css'
+import 'basecoat-standalone.css'
 import './index.css'
 import { App } from './ui/App'
 

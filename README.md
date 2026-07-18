@@ -16,12 +16,14 @@ recalibrate the plan to your real progress.
 ## Stack
 
 [Vite](https://vitejs.dev) + TypeScript + [Preact](https://preactjs.com) +
-[@preact/signals](https://preactjs.com/guide/v10/signals/), plain CSS driven by
-design tokens (no CSS framework), the [Outfit](https://fonts.google.com/specimen/Outfit)
-typeface self-hosted for offline use,
+[@preact/signals](https://preactjs.com/guide/v10/signals/), styled with
+[Basecoat](https://basecoatui.com) — a standalone CSS build of the
+[shadcn/ui](https://ui.shadcn.com) design system (no React, no Tailwind
+toolchain) — plus one small app stylesheet. The
+[Geist](https://vercel.com/font) typeface is self-hosted for offline use.
 [vite-plugin-pwa](https://vite-pwa-org.netlify.app) for the service worker,
 [Vitest](https://vitest.dev) for tests. No state library, no backend.
-Production bundle is ~40 kB of JS plus ~60 kB of font.
+Production bundle gzips to ~16 kB of JS + ~25 kB of CSS, plus ~30 kB of font.
 
 ## Develop
 
@@ -47,7 +49,7 @@ src/core/            everything that isn't UI — pure TypeScript, fully unit-te
   dates.ts           date arithmetic (DST-safe)
   generators/        training algorithms (registry + one file per algorithm)
 src/ui/              Preact components, one file per screen area
-src/index.css        all styling (design tokens at the top)
+src/index.css        app styling on top of Basecoat (shadcn design system)
 docs/                architecture + contributing guides
 .github/workflows/   test + deploy pipeline
 ```

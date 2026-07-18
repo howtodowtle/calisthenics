@@ -19,3 +19,8 @@ export const TYPE_LABEL: Record<SessionType, string> = {
   taper: 'Taper',
   recovery: 'Recovery',
 }
+
+/** Basecoat badge variant per session type: tests get the strong (primary)
+ * badge, everything else the muted secondary one. */
+export const badgeVariant = (type: SessionType): string | undefined =>
+  type === 'test' ? undefined : 'secondary'

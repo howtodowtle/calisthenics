@@ -3,7 +3,7 @@ import type { SessionView } from '../core/derive'
 import { formatDate } from '../core/dates'
 import { logSession } from '../core/store'
 import type { Exercise, ResultSet } from '../core/types'
-import { TYPE_LABEL, unitSuffix } from './format'
+import { badgeVariant, TYPE_LABEL, unitSuffix } from './format'
 
 /**
  * One-tap logging: Done logs every set at target. Sets that need a real
@@ -46,7 +46,8 @@ export function TodayCard({
   const overdue = session.date < today
 
   return (
-    <div class="card today-card">
+    <div class="card" data-size="sm">
+      <section>
       <div class={overdue ? 'eyebrow overdue' : 'eyebrow'}>
         {overdue ? `Overdue · ${formatDate(session.date, today)}` : 'Today'}
       </div>
@@ -54,8 +55,16 @@ export function TodayCard({
         <span class="today-title">
           Week {session.week} · Session {session.index}
         </span>
-        {session.type !== 'normal' && <span class={`badge ${session.type}`}>{TYPE_LABEL[session.type]}</span>}
-        {session.overridden && <span class="badge edited">edited</span>}
+        {session.type !== 'normal' && (
+          <span class="badge" data-variant={badgeVariant(session.type)}>
+            {TYPE_LABEL[session.type]}
+          </span>
+        )}
+        {session.overridden && (
+          <span class="badge" data-variant="outline">
+            edited
+          </span>
+        )}
       </div>
       {session.type === 'test' ? (
         <p class="dim">Single set — as many as you can. Result recalibrates the rest of the plan.</p>
@@ -65,6 +74,7 @@ export function TodayCard({
           <div class="set-chip" key={i}>
             {needsInput(i) ? (
               <input
+                class="input"
                 type="number"
                 min={0}
                 value={values[i]}
@@ -90,36 +100,44 @@ export function TodayCard({
           {session.type === 'test' ? 'How many did you get?' : 'Enter what you actually did.'}
         </p>
       )}
-      <button class="primary" onClick={onDone}>
+      <button class="btn block" onClick={onDone}>
         {editing === 'none' ? 'Done' : 'Save'}
       </button>
       {editing === 'none' && (
-        <button class="subtle" style={{ width: '100%', marginTop: 4 }} onClick={() => setEditing('all')}>
+        <button
+          class="btn block"
+          data-variant="ghost"
+          style={{ marginTop: 6 }}
+          onClick={() => setEditing('all')}
+        >
           Adjust {exercise.unit === 'seconds' ? 'times' : 'reps'}
         </button>
       )}
+      </section>
     </div>
   )
 }
 
 export function RestCard({ next, today }: { next: SessionView | null; today: string }) {
   return (
-    <div class="card rest-card">
-      {next ? (
-        <>
-          <div class="big-emoji">🌤</div>
-          <strong>Rest day</strong>
-          <p class="dim">
-            Next: {formatDate(next.date, today)} — Week {next.week} · Session {next.index}
-          </p>
-        </>
-      ) : (
-        <>
-          <div class="big-emoji">🎉</div>
-          <strong>Plan complete</strong>
-          <p class="dim">Start a new one in Settings.</p>
-        </>
-      )}
+    <div class="card rest-card" data-size="sm">
+      <section>
+        {next ? (
+          <>
+            <div class="big-emoji">🌤</div>
+            <strong>Rest day</strong>
+            <p class="dim">
+              Next: {formatDate(next.date, today)} — Week {next.week} · Session {next.index}
+            </p>
+          </>
+        ) : (
+          <>
+            <div class="big-emoji">🎉</div>
+            <strong>Plan complete</strong>
+            <p class="dim">Start a new one in Settings.</p>
+          </>
+        )}
+      </section>
     </div>
   )
 }

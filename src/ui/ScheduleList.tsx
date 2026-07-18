@@ -3,7 +3,7 @@ import type { SessionView } from '../core/derive'
 import { formatDate } from '../core/dates'
 import { clearOverride, setOverride } from '../core/store'
 import type { Exercise } from '../core/types'
-import { setsSummary, TYPE_LABEL } from './format'
+import { badgeVariant, setsSummary, TYPE_LABEL } from './format'
 
 /**
  * Upcoming sessions. Tapping a row opens an inline editor; saving stores a
@@ -28,27 +28,37 @@ export function ScheduleList({
   return (
     <>
       <h2>Schedule</h2>
-      <div class="card" style={{ padding: '4px 16px' }}>
-        {upcoming.map((s, i) =>
-          open === s.index ? (
-            <SessionEditor key={s.index} session={s} planId={planId} onClose={() => setOpen(null)} />
-          ) : (
-            <button
-              key={s.index}
-              class="session-row"
-              style={{ '--i': `${Math.min(i, 10) * 25}ms` }}
-              onClick={() => setOpen(s.index)}
-            >
-              <span class="date">{formatDate(s.date, today)}</span>
-              <span class="sets-line" style={{ flex: 1 }}>
-                {setsSummary(s.sets, exercise.unit)}
-              </span>
-              {s.type !== 'normal' && <span class={`badge ${s.type}`}>{TYPE_LABEL[s.type]}</span>}
-              {s.overridden && <span class="badge edited">edited</span>}
-              <span class="chev">›</span>
-            </button>
-          ),
-        )}
+      <div class="card" data-size="sm" style={{ paddingBlock: 4 }}>
+        <section>
+          {upcoming.map((s, i) =>
+            open === s.index ? (
+              <SessionEditor key={s.index} session={s} planId={planId} onClose={() => setOpen(null)} />
+            ) : (
+              <button
+                key={s.index}
+                class="session-row"
+                style={{ '--i': `${Math.min(i, 10) * 25}ms` }}
+                onClick={() => setOpen(s.index)}
+              >
+                <span class="date">{formatDate(s.date, today)}</span>
+                <span class="sets-line" style={{ flex: 1 }}>
+                  {setsSummary(s.sets, exercise.unit)}
+                </span>
+                {s.type !== 'normal' && (
+                  <span class="badge" data-variant={badgeVariant(s.type)}>
+                    {TYPE_LABEL[s.type]}
+                  </span>
+                )}
+                {s.overridden && (
+                  <span class="badge" data-variant="outline">
+                    edited
+                  </span>
+                )}
+                <span class="chev">›</span>
+              </button>
+            ),
+          )}
+        </section>
       </div>
     </>
   )
@@ -88,6 +98,7 @@ function SessionEditor({
         {session.sets.map((s, i) => (
           <div class="set-chip" key={i}>
             <input
+              class="input"
               type="number"
               min={1}
               value={values[i]}
@@ -102,12 +113,14 @@ function SessionEditor({
         ))}
       </div>
       <div class="row" style={{ justifyContent: 'flex-start' }}>
-        <button onClick={save}>Save</button>
-        <button class="subtle" onClick={onClose}>
+        <button class="btn" data-size="sm" onClick={save}>
+          Save
+        </button>
+        <button class="btn" data-variant="ghost" data-size="sm" onClick={onClose}>
           Cancel
         </button>
         {session.overridden && (
-          <button class="danger" onClick={revert}>
+          <button class="btn danger" data-variant="ghost" data-size="sm" onClick={revert}>
             Revert to plan
           </button>
         )}

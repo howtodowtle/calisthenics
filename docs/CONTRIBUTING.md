@@ -128,20 +128,29 @@ user would silently lose their plan to a fresh seed.
 
 ## UI conventions
 
-- One stylesheet, `src/index.css`. Design tokens (colors, radius, spacing) are
-  CSS custom properties in `:root` at the top — change the look there, not
-  per-component. Dark mode is automatic via `prefers-color-scheme`; every new
-  color needs a value that works on both surfaces.
-- Typeface is Outfit (variable), self-hosted via `@fontsource-variable/outfit`
+- Styling is [Basecoat](https://basecoatui.com) — a standalone CSS build of the
+  shadcn/ui design system, imported in `src/main.tsx` (via the
+  `basecoat-standalone.css` alias in `vite.config.ts`) — plus one app
+  stylesheet, `src/index.css`. Reach for Basecoat's pieces first: `class="btn"`
+  with `data-variant`/`data-size`, `class="card" data-size="sm"` with a
+  `<section>` child, `class="input"`, `class="select"`, `class="badge"`.
+  Custom CSS in `index.css` is for layout and app-specific components only,
+  and always colors via Basecoat's theme tokens (`--background`, `--card`,
+  `--muted`, `--muted-foreground`, `--border`, `--destructive`, `--radius`…)
+  so both themes stay correct for free.
+- Dark mode is a `.dark` class on `<html>`, toggled by the inline script in
+  `index.html` following `prefers-color-scheme`. Never use
+  `@media (prefers-color-scheme)` in CSS — it would disagree with the class.
+- Typeface is Geist (variable), self-hosted via `@fontsource-variable/geist`
   so it works offline — imported once in `src/main.tsx`. Tap targets ≥ 44px on
   interactive rows.
-- Motion lives in tokens too (`--dur-*`, `--ease-*`) plus two shared keyframes
-  (`fade-up`, `scale-in`). Reuse those instead of inventing new timings, and
-  never animate without the `prefers-reduced-motion` escape hatch at the bottom
-  of the stylesheet (it already covers plain `animation`/`transition`).
-- Chart colors are `--viz-*` tokens, contrast-validated for both themes. If you
-  change them, keep light/dark variants and check contrast against the card
-  surface.
+- Motion lives in tokens (`--dur-*`, `--ease-out-expo`) plus two shared
+  keyframes (`fade-up`, `scale-in`). Reuse those instead of inventing new
+  timings, and never animate without the `prefers-reduced-motion` escape hatch
+  at the bottom of the stylesheet (it already covers `animation`/`transition`).
+- The chart is monochrome by design: `--viz-*` tokens map to Basecoat's
+  `--muted-foreground`/`--foreground`, and series identity is carried by shape
+  and the legend, not hue.
 - Confirmation dialogs (`confirm()`) guard every destructive action (delete
   exercise/plan, import). Keep that — there is no undo.
 

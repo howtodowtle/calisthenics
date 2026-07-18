@@ -75,13 +75,15 @@ export function ExerciseTab({
           />
         </>
       ) : (
-        <div class="card empty">
-          <div class="big-emoji">{exercise.emoji}</div>
-          <strong>No active plan</strong>
-          <p class="dim">Set a goal and get a full session-by-session schedule.</p>
-          <button class="primary" onClick={onOpenSettings}>
-            Create a plan
-          </button>
+        <div class="card empty" data-size="sm">
+          <section>
+            <div class="big-emoji">{exercise.emoji}</div>
+            <strong>No active plan</strong>
+            <p class="dim">Set a goal and get a full session-by-session schedule.</p>
+            <button class="btn block" onClick={onOpenSettings}>
+              Create a plan
+            </button>
+          </section>
         </div>
       )}
 

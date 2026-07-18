@@ -58,7 +58,8 @@ export function Chart({ sessions, unit, today }: { sessions: SessionView[]; unit
   const sfx = unitSuffix(unit)
 
   return (
-    <div class="card" style={{ position: 'relative' }}>
+    <div class="card" data-size="sm" style={{ position: 'relative' }}>
+      <section>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
@@ -113,6 +114,7 @@ export function Chart({ sessions, unit, today }: { sessions: SessionView[]; unit
           <svg width="12" height="12"><path d="M6,1 l4.5,5 l-4.5,5 l-4.5,-5 z" class="viz-diamond" /></svg> Max test
         </span>
       </div>
+      </section>
 
       {sel && (
         <div class="viz-tooltip" style={{ left: `${(x(sessions.indexOf(sel)) / W) * 100}%` }}>

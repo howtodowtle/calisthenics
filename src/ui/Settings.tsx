@@ -61,17 +61,25 @@ function ExerciseCard({
   const archived = plans.filter((p) => p.status === 'archived')
 
   return (
-    <div class="card">
+    <div class="card" data-size="sm">
+      <section>
       <div class="row">
         <strong>
           {exercise.emoji} {exercise.name} <span class="dim">({exercise.unit})</span>
         </strong>
         <span>
-          <button class="subtle" onClick={() => setMode(mode === 'edit' ? 'view' : 'edit')}>
+          <button
+            class="btn"
+            data-variant="ghost"
+            data-size="sm"
+            onClick={() => setMode(mode === 'edit' ? 'view' : 'edit')}
+          >
             Edit
           </button>
           <button
-            class="danger"
+            class="btn danger"
+            data-variant="ghost"
+            data-size="sm"
             onClick={() => {
               if (confirm(`Delete ${exercise.name}, its plans and ALL logged history?`))
                 deleteExercise(exercise.id)
@@ -107,14 +115,21 @@ function ExerciseCard({
             />
           ) : (
             <div class="row" style={{ justifyContent: 'flex-start' }}>
-              <button class="subtle" onClick={() => onSelectExercise(exercise.id)}>
+              <button
+                class="btn"
+                data-variant="ghost"
+                data-size="sm"
+                onClick={() => onSelectExercise(exercise.id)}
+              >
                 Open
               </button>
-              <button class="subtle" onClick={() => setMode('edit-plan')}>
+              <button class="btn" data-variant="ghost" data-size="sm" onClick={() => setMode('edit-plan')}>
                 Edit params
               </button>
               <button
-                class="subtle"
+                class="btn"
+                data-variant="ghost"
+                data-size="sm"
                 onClick={() => {
                   if (confirm('Stop this plan? History is kept.')) stopPlan(active.id)
                 }}
@@ -122,7 +137,9 @@ function ExerciseCard({
                 Stop
               </button>
               <button
-                class="danger"
+                class="btn danger"
+                data-variant="ghost"
+                data-size="sm"
                 onClick={() => {
                   if (confirm('Delete this plan AND its logged sessions?')) deletePlan(active.id)
                 }}
@@ -135,7 +152,13 @@ function ExerciseCard({
       ) : mode === 'new-plan' ? (
         <PlanForm exercise={exercise} onDone={() => setMode('view')} />
       ) : (
-        <button style={{ marginTop: 8 }} onClick={() => setMode('new-plan')}>
+        <button
+          class="btn"
+          data-variant="outline"
+          data-size="sm"
+          style={{ marginTop: 8 }}
+          onClick={() => setMode('new-plan')}
+        >
           New plan
         </button>
       )}
@@ -147,7 +170,9 @@ function ExerciseCard({
           {archived.map((p) => (
             <button
               key={p.id}
-              class="danger"
+              class="btn danger"
+              data-variant="ghost"
+              data-size="sm"
               onClick={() => {
                 if (confirm(`Delete archived plan from ${p.startDate} and its history?`))
                   deletePlan(p.id)
@@ -158,6 +183,7 @@ function ExerciseCard({
           ))}
         </p>
       )}
+      </section>
     </div>
   )
 }
@@ -179,11 +205,12 @@ function ExerciseForm({
     <div style={{ margin: '10px 0' }}>
       <label>
         Name
-        <input value={name} onInput={(e) => setName((e.target as HTMLInputElement).value)} />
+        <input class="input" value={name} onInput={(e) => setName((e.target as HTMLInputElement).value)} />
       </label>
       <label>
         Emoji
         <input
+          class="input"
           style={{ width: 72, textAlign: 'center' }}
           value={emoji}
           onInput={(e) => setEmoji((e.target as HTMLInputElement).value)}
@@ -191,17 +218,25 @@ function ExerciseForm({
       </label>
       <label>
         Unit
-        <select value={unit} onChange={(e) => setUnit((e.target as HTMLSelectElement).value as Unit)}>
+        <select
+          class="select"
+          value={unit}
+          onChange={(e) => setUnit((e.target as HTMLSelectElement).value as Unit)}
+        >
           <option value="reps">reps</option>
           <option value="seconds">seconds</option>
         </select>
       </label>
       <div class="row" style={{ justifyContent: 'flex-start' }}>
-        <button onClick={() => name.trim() && onSave(name.trim(), emoji.trim() || '🏋️', unit)}>
+        <button
+          class="btn"
+          data-size="sm"
+          onClick={() => name.trim() && onSave(name.trim(), emoji.trim() || '🏋️', unit)}
+        >
           Save
         </button>
         {onCancel && (
-          <button class="subtle" onClick={onCancel}>
+          <button class="btn" data-variant="ghost" data-size="sm" onClick={onCancel}>
             Cancel
           </button>
         )}
@@ -213,18 +248,22 @@ function ExerciseForm({
 function AddExercise() {
   const [open, setOpen] = useState(false)
   return (
-    <div class="card">
-      {open ? (
-        <ExerciseForm
-          onSave={(name, emoji, unit) => {
-            addExercise(name, emoji, unit)
-            setOpen(false)
-          }}
-          onCancel={() => setOpen(false)}
-        />
-      ) : (
-        <button onClick={() => setOpen(true)}>+ Add exercise</button>
-      )}
+    <div class="card" data-size="sm">
+      <section>
+        {open ? (
+          <ExerciseForm
+            onSave={(name, emoji, unit) => {
+              addExercise(name, emoji, unit)
+              setOpen(false)
+            }}
+            onCancel={() => setOpen(false)}
+          />
+        ) : (
+          <button class="btn" data-variant="outline" onClick={() => setOpen(true)}>
+            + Add exercise
+          </button>
+        )}
+      </section>
     </div>
   )
 }
@@ -274,6 +313,7 @@ function PlanForm({
         <label>
           Algorithm
           <select
+            class="select"
             value={generatorId}
             onChange={(e) => {
               const id = (e.target as HTMLSelectElement).value
@@ -296,6 +336,7 @@ function PlanForm({
         <label key={f.key}>
           {f.label}
           <input
+            class="input"
             type="number"
             min={f.min}
             max={f.max}
@@ -311,6 +352,7 @@ function PlanForm({
         <label>
           Start date
           <input
+            class="input"
             type="date"
             style={{ width: 160 }}
             value={startDate}
@@ -325,10 +367,10 @@ function PlanForm({
       )}
       {initial && <p class="dim">Completed sessions stay as logged; future sessions re-derive.</p>}
       <div class="row" style={{ justifyContent: 'flex-start' }}>
-        <button class="primary" style={{ width: 'auto' }} onClick={save}>
+        <button class="btn" onClick={save}>
           {initial ? 'Save params' : 'Start plan'}
         </button>
-        <button class="subtle" onClick={onDone}>
+        <button class="btn" data-variant="ghost" onClick={onDone}>
           Cancel
         </button>
       </div>
@@ -365,14 +407,18 @@ function Backup() {
   }
 
   return (
-    <div class="card row">
-      <button onClick={doExport}>Export backup</button>
-      <label style={{ margin: 0 }}>
-        <span class="subtle" style={{ color: 'var(--accent)', cursor: 'pointer' }}>
-          Import backup
-          <input type="file" accept="application/json" style={{ display: 'none' }} onChange={doImport} />
-        </span>
-      </label>
+    <div class="card" data-size="sm">
+      <section class="row">
+        <button class="btn" data-variant="outline" onClick={doExport}>
+          Export backup
+        </button>
+        <label style={{ margin: 0 }}>
+          <span class="btn" data-variant="ghost">
+            Import backup
+            <input type="file" accept="application/json" style={{ display: 'none' }} onChange={doImport} />
+          </span>
+        </label>
+      </section>
     </div>
   )
 }
