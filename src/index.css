@@ -5,9 +5,34 @@
  * only adds layout and app-specific components. Dark mode = .dark on <html>,
  * toggled by the inline script in index.html.
  * Font: Geist (variable, self-hosted via @fontsource — works offline).
+ *
+ * Theme: "Clay" — warm paper + espresso ink in light mode, warm charcoal in
+ * dark mode, terracotta as the single action color. The blocks below redefine
+ * Basecoat's neutral tokens; they win because index.css loads after Basecoat
+ * at equal specificity. New surface/text colors belong here, not on components.
  */
 :root {
   --font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* -- Clay, light -- */
+  --background: #f7f3ed;
+  --foreground: #24201b;
+  --card: #fffdf9;
+  --card-foreground: #24201b;
+  --popover: #fffdf9;
+  --popover-foreground: #24201b;
+  --primary: #b0492f;
+  --primary-foreground: #fff6f0;
+  --secondary: #efe8dd;
+  --secondary-foreground: #453c32;
+  --muted: #efe8dd;
+  --muted-foreground: #8a7f72;
+  --accent: #efe8dd;
+  --accent-foreground: #24201b;
+  --destructive: #b42318;
+  --border: #e7ded2;
+  --input: #e7ded2;
+  --ring: #b0492f;
 
   /* -- motion -- */
   --dur-fast: 120ms;
@@ -15,10 +40,32 @@
   --dur-slow: 300ms;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* -- chart series: monochrome like the rest of the UI; shape + legend carry
-        identity. Both resolve per-theme through the Basecoat tokens. -- */
+  /* -- chart series: muted planned line, terracotta done dots; shape + legend
+        also carry identity so the accent is never the only signal. -- */
   --viz-planned: var(--muted-foreground);
-  --viz-actual: var(--foreground);
+  --viz-actual: var(--primary);
+}
+
+.dark {
+  /* -- Clay, dark -- */
+  --background: #1a1512;
+  --foreground: #ede4d8;
+  --card: #241d18;
+  --card-foreground: #ede4d8;
+  --popover: #2a221c;
+  --popover-foreground: #ede4d8;
+  --primary: #d97757;
+  --primary-foreground: #2a130a;
+  --secondary: #2e2620;
+  --secondary-foreground: #ded2c3;
+  --muted: #2e2620;
+  --muted-foreground: #a3968a;
+  --accent: #362c24;
+  --accent-foreground: #ede4d8;
+  --destructive: #e5544b;
+  --border: #382e26;
+  --input: #3e332a;
+  --ring: #d97757;
 }
 
 * {

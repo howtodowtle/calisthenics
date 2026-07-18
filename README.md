@@ -19,7 +19,8 @@ recalibrate the plan to your real progress.
 [@preact/signals](https://preactjs.com/guide/v10/signals/), styled with
 [Basecoat](https://basecoatui.com) — a standalone CSS build of the
 [shadcn/ui](https://ui.shadcn.com) design system (no React, no Tailwind
-toolchain) — plus one small app stylesheet. The
+toolchain) — plus one small app stylesheet carrying the "Clay" theme
+(warm paper & espresso surfaces, terracotta actions). The
 [Geist](https://vercel.com/font) typeface is self-hosted for offline use.
 [vite-plugin-pwa](https://vite-pwa-org.netlify.app) for the service worker,
 [Vitest](https://vitest.dev) for tests. No state library, no backend.

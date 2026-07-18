@@ -138,6 +138,10 @@ user would silently lose their plan to a fresh seed.
   and always colors via Basecoat's theme tokens (`--background`, `--card`,
   `--muted`, `--muted-foreground`, `--border`, `--destructive`, `--radius`…)
   so both themes stay correct for free.
+- The color theme ("Clay": warm paper/espresso surfaces, terracotta actions)
+  is a token override at the top of `index.css` — light values in `:root`,
+  dark in `.dark`. Change colors there, never on components; swapping the
+  whole theme means swapping those two blocks.
 - Dark mode is a `.dark` class on `<html>`, toggled by the inline script in
   `index.html` following `prefers-color-scheme`. Never use
   `@media (prefers-color-scheme)` in CSS — it would disagree with the class.
@@ -148,9 +152,9 @@ user would silently lose their plan to a fresh seed.
   keyframes (`fade-up`, `scale-in`). Reuse those instead of inventing new
   timings, and never animate without the `prefers-reduced-motion` escape hatch
   at the bottom of the stylesheet (it already covers `animation`/`transition`).
-- The chart is monochrome by design: `--viz-*` tokens map to Basecoat's
-  `--muted-foreground`/`--foreground`, and series identity is carried by shape
-  and the legend, not hue.
+- The chart is two-tone: `--viz-planned` maps to `--muted-foreground`,
+  `--viz-actual` to `--primary`. Series identity is still carried by shape and
+  the legend, so the accent color is never the only signal.
 - Confirmation dialogs (`confirm()`) guard every destructive action (delete
   exercise/plan, import). Keep that — there is no undo.
 
