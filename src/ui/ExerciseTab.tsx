@@ -76,9 +76,11 @@ export function ExerciseTab({
         </>
       ) : (
         <div class="card empty">
-          <p>No active plan.</p>
+          <div class="big-emoji">{exercise.emoji}</div>
+          <strong>No active plan</strong>
+          <p class="dim">Set a goal and get a full session-by-session schedule.</p>
           <button class="primary" onClick={onOpenSettings}>
-            Start one in Settings
+            Create a plan
           </button>
         </div>
       )}

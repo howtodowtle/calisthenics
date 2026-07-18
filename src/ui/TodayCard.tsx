@@ -43,12 +43,17 @@ export function TodayCard({
     else save(values)
   }
 
+  const overdue = session.date < today
+
   return (
-    <div class="card">
+    <div class="card today-card">
+      <div class={overdue ? 'eyebrow overdue' : 'eyebrow'}>
+        {overdue ? `Overdue · ${formatDate(session.date, today)}` : 'Today'}
+      </div>
       <div class="row">
-        <strong>
+        <span class="today-title">
           Week {session.week} · Session {session.index}
-        </strong>
+        </span>
         {session.type !== 'normal' && <span class={`badge ${session.type}`}>{TYPE_LABEL[session.type]}</span>}
         {session.overridden && <span class="badge edited">edited</span>}
       </div>
@@ -86,7 +91,7 @@ export function TodayCard({
         </p>
       )}
       <button class="primary" onClick={onDone}>
-        {editing === 'none' ? (session.date < today ? 'Done (was due earlier)' : 'Done') : 'Save'}
+        {editing === 'none' ? 'Done' : 'Save'}
       </button>
       {editing === 'none' && (
         <button class="subtle" style={{ width: '100%', marginTop: 4 }} onClick={() => setEditing('all')}>
@@ -99,17 +104,19 @@ export function TodayCard({
 
 export function RestCard({ next, today }: { next: SessionView | null; today: string }) {
   return (
-    <div class="card">
+    <div class="card rest-card">
       {next ? (
         <>
-          <strong>Rest day 🌤</strong>
+          <div class="big-emoji">🌤</div>
+          <strong>Rest day</strong>
           <p class="dim">
             Next: {formatDate(next.date, today)} — Week {next.week} · Session {next.index}
           </p>
         </>
       ) : (
         <>
-          <strong>Plan complete 🎉</strong>
+          <div class="big-emoji">🎉</div>
+          <strong>Plan complete</strong>
           <p class="dim">Start a new one in Settings.</p>
         </>
       )}

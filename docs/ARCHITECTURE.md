@@ -1,0 +1,169 @@
+# Architecture
+
+How the app works, top to bottom. Read this before changing anything in `src/core/`.
+
+The app is a **generalized plan engine + logging UI**. Exercise types and training
+algorithms are data/config, not code paths: an exercise is a record (name, emoji,
+unit), an algorithm is a `Generator` in a registry, and a plan is a reference to a
+generator plus its parameters.
+
+## The one rule: derive, don't mutate
+
+Everything else follows from this.
+
+- **Past = facts.** Completing a session writes an immutable `Result` snapshot —
+  the targets as they were that day plus what you actually did. History, stats and
+  the chart read only Results. Nothing ever regenerates or edits the past.
+- **Future = pure function.** The schedule you see for incomplete sessions is
+  recomputed on every render:
+
+  ```
+  sessions = overrides ⊕ generator.generate(plan.params, plan.calibrations)
+  dates    = shiftForward(baseDates(plan.startDate, sessionsPerWeek), results, today)
+  ```
+
+- **Storage holds only inputs**: params, calibrations, overrides, results. Never
+  generated sessions.
+
+Why this matters: plan editing, test recalibration and manual day edits all
+*stack*. If generated sessions were stored, every feature that changes the future
+would need to reconcile with every other one (regenerate but keep edits? re-apply
+calibration after a param change? …). Because the future is always derived from
+inputs, there is nothing to reconcile — change an input, the future is simply
+recomputed. A plan is ~40 sessions; derivation cost is nil.
+
+Concrete consequences:
+
+| You do | What is stored | What happens on next render |
+|---|---|---|
+| Log a normal session | one `Result` | session shows as done (from the Result), rest re-derives |
+| Log a max test | a `Result` + a `CalibrationPoint` | future targets bend toward your real max |
+| Edit a future day's sets | an override on the plan | that day shows your numbers, survives everything below |
+| Edit plan params mid-plan | new `params` | future re-derives from new params; past untouched |
+| Skip a few days | nothing | remaining schedule slides forward (computed, not stored) |
+
+## Data model (`src/core/types.ts`)
+
+```
+Exercise          name + emoji + unit ('reps' | 'seconds')
+Plan              exerciseId + generatorId + params + startDate
+                  + status ('active' | 'archived')
+                  + calibrations: [{ sessionIndex, actual }]
+                  + overrides: { [sessionIndex]: { sets } }
+Result            immutable completion snapshot:
+                  planId + sessionIndex + date + sessionType
+                  + sets: [{ target, isMinimum, actual }]
+AppData           { version, exercises[], plans[], results[] } — one localStorage key
+```
+
+Invariants:
+
+- At most **one active plan per exercise** (`createPlan` archives any existing
+  active one).
+- **Stop archives** — its Results keep counting toward stats. **Delete erases**
+  the plan *and* its Results.
+- `plan.params` is generator-specific, but must contain `sessionsPerWeek` — the
+  core scheduler reads it (that's the whole contract between core and generators).
+- Sessions are 1-indexed everywhere (`sessionIndex`, `SessionTemplate.index`).
+
+## Module map (`src/core/`)
+
+Everything in `core/` is pure TypeScript with no UI imports; all of it is
+unit-tested. Data flows in one direction:
+
+```
+store.ts  ──(AppData signal)──►  derive.ts  ──(PlanView)──►  src/ui/*
+                                   │
+                    ┌──────────────┼────────────────┐
+              generators/     schedule.ts       results
+              (what to do)    (when to do it)   (what happened)
+```
+
+| Module | Responsibility |
+|---|---|
+| `store.ts` | One `@preact/signals` signal over the whole `AppData` blob; every mutation goes through `update()` which clones, mutates, persists to localStorage. All mutations live here (`createPlan`, `logSession`, `setOverride`, …) — UI components never touch storage directly. |
+| `derive.ts` | `derivePlanView(plan, results, today)` — merges generator output, overrides, results and shifted dates into `SessionView[]` plus `due` / `next` / `endDate`. The single source for "what does this plan look like right now". |
+| `schedule.ts` | `baseDates` spreads sessions evenly per week from the start date (3/wk → offsets 0, 2, 4). `shiftedDates` slides the remaining schedule forward when the first incomplete session is overdue. The single place a smarter rescheduler would plug in. |
+| `generators/` | The algorithm registry. See below. |
+| `stats.ts` | Streak (sessions ≤ 7 days apart, ending within 7 days of today) and lifetime totals, computed across active *and* archived plans of an exercise. |
+| `dates.ts` | ISO-date arithmetic done at UTC noon so DST transitions can't skew day math. |
+
+Session state machine (in `derive.ts`): a session is `done` (has a Result),
+`due` (the **first** incomplete session, date ≤ today — logging is strictly
+sequential, so at most one session is ever due), or `upcoming`.
+
+## Generators (`src/core/generators/`)
+
+```ts
+interface Generator {
+  id: string            // stable forever — stored in every plan that uses it
+  name: string
+  description: string
+  paramFields: ParamField[]   // declarative → the plan form renders itself
+  generate(params, calibrations): SessionTemplate[]   // pure, idempotent
+}
+```
+
+- `paramFields` is a declarative schema (`key`, `label`, `min`, `max`, `step`,
+  `defaultValue`). The Settings form renders inputs from it — a new generator
+  needs **zero UI code**.
+- `generate` must be a pure function: same inputs → same output. It is called on
+  every render.
+- Generators that don't support recalibration simply ignore the `calibrations`
+  argument.
+- **Generator ids are stable forever.** Plans store the id; changing an existing
+  generator's math silently changes the future of every running plan that uses
+  it. Behavior change → new id (`logistic-v2`), old one stays.
+
+How to add one: [CONTRIBUTING.md](CONTRIBUTING.md#adding-a-training-algorithm).
+
+### `logistic-v1` — the ported example
+
+Port of the algorithm from the original iOS app ("100 Pushups in 13 Weeks"),
+generalized from its fixed 13-weeks-×-3 shape to any `weeks × sessionsPerWeek`:
+
+- **Theoretical max curve**: flat for 3 lag sessions, then a logistic S-curve from
+  `startMax` to `targetMax`. Steepness scales with plan length (k = 0.25 at the
+  original 13w×3 shape, so that shape reproduces the original exactly).
+- **Sessions**: 3 fixed sets + a minimum-then-as-many-as-you-can 4th set;
+  rotating volume / mixed / intensity day templates; a difficulty multiplier
+  easing from 1.25 (max ≤ 10) to 0.75 (max ≥ 100).
+- **Max tests** at the end of every 3rd week (from week 4, while ≥ 3 weeks
+  remain) plus a final test; taper session before, recovery session after.
+- **Calibration**: after a test, future maxes shift by (actual − predicted),
+  decaying linearly to zero by the last session. Only the latest test counts.
+  (One deliberate deviation from the Swift original: the decay clamps at 0
+  instead of briefly going negative on the final session.)
+
+`logistic.test.ts` golden-tests it against a direct transliteration of the Swift
+original — bit-identical output for the 13w×3 shape.
+
+## UI (`src/ui/`)
+
+Thin Preact components over the derived views. No component owns data — they read
+`db.value` (or props derived from it) and call `store.ts` mutations. The signal
+update re-renders everything; at this data size that's the simplest correct model.
+
+| File | Screen area |
+|---|---|
+| `App.tsx` | Tab bar (one tab per exercise + Settings), `useToday()` (re-renders on foregrounding / every minute so "today" survives midnight) |
+| `ExerciseTab.tsx` | Composition: today card → stats → chart → schedule → history |
+| `TodayCard.tsx` | One-tap Done. Max tests and minimum sets prompt for actual numbers; "Adjust" opens all sets for editing |
+| `ScheduleList.tsx` | Upcoming sessions; tapping a row opens an inline editor that stores an override |
+| `HistoryList.tsx` | Past Results, newest first |
+| `Chart.tsx` | SVG progress chart — planned volume line, done dots, test diamonds, tap/drag crosshair. Colors are `--viz-*` tokens validated for both themes |
+| `Settings.tsx` | Exercise CRUD, plan lifecycle (create / edit params / stop / delete), self-rendering param forms, JSON backup |
+
+Styling: one `src/index.css`, design tokens (colors, radii) as CSS custom
+properties at the top, automatic dark mode via `prefers-color-scheme`.
+
+## PWA / persistence
+
+- `vite-plugin-pwa` (Workbox) precaches the build; `registerType: 'autoUpdate'`
+  means an installed app fetches new deploys on next launch, no user action.
+- All data sits in **one localStorage key** (`training-pwa`) as versioned
+  `AppData`. `store.ts#load()` falls back to seed data if the blob is missing or
+  malformed. Schema changes require a version bump + migration — recipe in
+  [CONTRIBUTING.md](CONTRIBUTING.md#changing-the-data-schema-migrations).
+- GitHub Pages serves the app under `/<repo>/`; the workflow sets `BASE_PATH`
+  and `vite.config.ts` uses it as `base`.

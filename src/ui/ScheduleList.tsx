@@ -40,6 +40,7 @@ export function ScheduleList({
               </span>
               {s.type !== 'normal' && <span class={`badge ${s.type}`}>{TYPE_LABEL[s.type]}</span>}
               {s.overridden && <span class="badge edited">edited</span>}
+              <span class="chev">›</span>
             </button>
           ),
         )}
