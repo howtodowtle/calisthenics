@@ -38,6 +38,8 @@ export interface SessionTemplate {
   index: number // 1-based
   type: SessionType
   sets: SetTemplate[]
+  /** The strength the session was planned around, if the generator models one. */
+  predictedMax?: number
 }
 
 export interface Plan {

@@ -23,6 +23,13 @@ export function ExerciseTab({
   const results = data.results.filter((r) => planIds.has(r.planId))
   const stats = exerciseStats(results, today)
   const view = activePlan ? derivePlanView(activePlan, data.results, today) : null
+  // History rows of the active plan show the max they were planned around.
+  const predictedMax = new Map<string, number>()
+  if (view && activePlan) {
+    for (const s of view.sessions) {
+      if (s.predictedMax != null) predictedMax.set(`${activePlan.id}:${s.index}`, s.predictedMax)
+    }
+  }
 
   return (
     <>
@@ -87,7 +94,7 @@ export function ExerciseTab({
         </div>
       )}
 
-      <HistoryList results={results} unit={exercise.unit} today={today} />
+      <HistoryList results={results} unit={exercise.unit} today={today} predictedMax={predictedMax} />
     </>
   )
 }

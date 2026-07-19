@@ -138,6 +138,31 @@ generalized from its fixed 13-weeks-×-3 shape to any `weeks × sessionsPerWeek`
 `logistic.test.ts` golden-tests it against a direct transliteration of the Swift
 original — bit-identical output for the 13w×3 shape.
 
+### `logistic-v2` — the default
+
+Moderate-volume successor (v1 prescribed 105–239% of the predicted max per
+session with single sets up to 105% — too much, too hard). Same test cadence
+and taper (×0.6) / recovery (×0.85) structure; what changed:
+
+- **Every session derives from that day's predicted max** and totals ~140–160%
+  of it across 4 sets. The difficulty multiplier is gone.
+- **One heavier day per week** (first session): top set capped at 85% of
+  predicted max (floor-rounded so the cap holds), the rest easy. Other days are
+  ~4 × 40% with a slight wave, alternating two patterns. Taper/recovery days
+  always use the easy shape.
+- **No AMRAP outside tests** — every non-test set is a fixed target.
+- **Curve**: logistic with no initial lag, normalized to pass exactly through
+  `startMax` (session 1) and `targetMax` (final test).
+- **Calibration re-anchors**: after a test, the future is a fresh logistic from
+  the test result to `targetMax` over the remaining sessions — no decay back.
+  Anchoring is piecewise per test, so earlier segments keep the curve they were
+  generated from. A result at or above `targetMax` holds the curve flat there.
+- Every session carries **`predictedMax`**, which the UI prints on schedule and
+  history rows and plots as the dotted right-axis line in the chart.
+
+`store.ts` migrates *active* `logistic-v1` plans to `logistic-v2` on load
+(archived plans keep v1 so their history derives exactly as generated).
+
 ## UI (`src/ui/`)
 
 Thin Preact components over the derived views. No component owns data — they read

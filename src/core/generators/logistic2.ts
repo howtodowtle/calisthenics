@@ -1,0 +1,151 @@
+import type {
+  CalibrationPoint,
+  Generator,
+  SessionTemplate,
+  SessionType,
+  SetTemplate,
+} from '../types'
+
+/**
+ * `logistic-v2` — moderate-volume successor to `logistic-v1`.
+ *
+ * What changed and why (v1 prescribed 105–239% of the predicted max per
+ * session and single sets up to 105% — too much, too hard):
+ * - Every session is built from that day's **predicted max** and lands at
+ *   ~140–160% of it, split into 4 sets. No difficulty multiplier.
+ * - The first session of each week is the one heavier day: top set capped at
+ *   85% of predicted max (floor-rounded so the cap really holds), the rest
+ *   easy. Other days are ~4 × 40% with a slight wave, alternating between two
+ *   patterns.
+ * - No AMRAP outside tests — every non-test set is a fixed target.
+ * - The predicted-max curve is a logistic from startMax to targetMax with no
+ *   initial lag, normalized to pass exactly through both endpoints.
+ * - Calibration **re-anchors**: after a test, the future is a fresh logistic
+ *   from the test result to targetMax over the remaining sessions — no decay
+ *   back to the old trajectory. Anchoring is piecewise per test, so sessions
+ *   before a later test keep the curve they were generated from. A result at
+ *   or above targetMax holds the curve flat at that result.
+ * - Test cadence, taper (×0.6) and recovery (×0.85) days are unchanged from
+ *   v1; taper/recovery always use the easy shape, never the heavy set.
+ *
+ * Every session carries `predictedMax` so the UI can print and plot the curve.
+ */
+
+const SWIFT_K = 0.25
+const SWIFT_SPAN = 35 // span the original k was tuned for; keeps the S-shape length-invariant
+
+type Rounding = 'round' | 'floor'
+
+interface DayTemplate {
+  fractions: number[]
+  rounding: Rounding[]
+}
+
+const DAY_TEMPLATES: Record<'heavy' | 'easyA' | 'easyB', DayTemplate> = {
+  // warm-up, capped top set, two easy closers — ~145% of predicted max
+  heavy: { fractions: [0.2, 0.85, 0.2, 0.2], rounding: ['round', 'floor', 'round', 'round'] },
+  // ~4 × 40% with a slight wave — ~160%
+  easyA: { fractions: [0.4, 0.45, 0.4, 0.35], rounding: ['round', 'round', 'round', 'round'] },
+  // alternate wave — ~155%
+  easyB: { fractions: [0.35, 0.4, 0.45, 0.35], rounding: ['round', 'round', 'round', 'round'] },
+}
+
+const REDUCTION: Partial<Record<SessionType, number>> = {
+  taper: 0.6,
+  recovery: 0.85,
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
+
+function predictedMaxAt(
+  n: number,
+  startMax: number,
+  targetMax: number,
+  totalSessions: number,
+  calibrations: CalibrationPoint[],
+): number {
+  // Anchor: the latest test strictly before session n. The test session itself
+  // is still governed by the previous anchor (its target was the prediction).
+  let anchorSession = 1
+  let anchorValue = startMax
+  for (const c of calibrations) {
+    if (c.sessionIndex < n && c.sessionIndex >= anchorSession) {
+      anchorSession = c.sessionIndex
+      anchorValue = clamp(Math.round(c.actual), 1, 500)
+    }
+  }
+  if (anchorValue >= targetMax) return anchorValue
+  const logEnd = totalSessions - 1
+  if (anchorSession >= logEnd) return anchorValue
+  const k = SWIFT_K * (SWIFT_SPAN / (logEnd - anchorSession))
+  const midpoint = (anchorSession + logEnd) / 2
+  const sigma = (x: number) => 1 / (1 + Math.exp(-k * (x - midpoint)))
+  // Normalize so the curve hits anchorValue at the anchor and targetMax at the
+  // last pre-test session exactly (the final test then sits at targetMax too).
+  const lo = sigma(anchorSession)
+  const hi = sigma(logEnd)
+  const progress = clamp((sigma(n) - lo) / (hi - lo), 0, 1)
+  return anchorValue + (targetMax - anchorValue) * progress
+}
+
+// Same layout as logistic-v1: final test + taper before it, mid-plan tests at
+// the end of every 3rd week from week 4 while ≥3 weeks remain, each flanked by
+// a taper and a recovery session.
+function sessionTypes(weeks: number, perWeek: number): SessionType[] {
+  const total = weeks * perWeek + 1
+  const types: SessionType[] = new Array(total).fill('normal')
+  types[total - 1] = 'test'
+  if (total >= 2) types[total - 2] = 'taper'
+  for (let w = 4; w <= weeks - 3; w += 3) {
+    const testIdx = w * perWeek - 1
+    types[testIdx] = 'test'
+    if (testIdx >= 1 && types[testIdx - 1] === 'normal') types[testIdx - 1] = 'taper'
+    if (types[testIdx + 1] === 'normal') types[testIdx + 1] = 'recovery'
+  }
+  return types
+}
+
+function pickTemplate(type: SessionType, dayInWeek: number): DayTemplate {
+  // Taper/recovery days always use the easy shape — no heavy set next to a test.
+  if (type !== 'normal') return DAY_TEMPLATES.easyA
+  if (dayInWeek === 1) return DAY_TEMPLATES.heavy
+  return dayInWeek % 2 === 0 ? DAY_TEMPLATES.easyA : DAY_TEMPLATES.easyB
+}
+
+function buildSets(max: number, type: SessionType, dayInWeek: number): SetTemplate[] {
+  if (type === 'test') return [{ target: max, isMinimum: false }]
+  const base = max * (REDUCTION[type] ?? 1)
+  const tpl = pickTemplate(type, dayInWeek)
+  return tpl.fractions.map((fraction, i) => ({
+    target: Math.max(1, Math[tpl.rounding[i]](fraction * base)),
+    isMinimum: false,
+  }))
+}
+
+export const logisticV2: Generator = {
+  id: 'logistic-v2',
+  name: 'Logistic progression II',
+  description:
+    'Four submaximal sets per session (~150% of predicted max total), one heavier ' +
+    'day per week capped at 85%. Max test every 3 weeks re-anchors the curve.',
+  paramFields: [
+    { key: 'startMax', label: 'Current max', min: 1, max: 500, step: 1, defaultValue: 10 },
+    { key: 'targetMax', label: 'Target max', min: 1, max: 500, step: 1, defaultValue: 100 },
+    { key: 'weeks', label: 'Weeks', min: 2, max: 52, step: 1, defaultValue: 13 },
+    { key: 'sessionsPerWeek', label: 'Sessions per week', min: 1, max: 7, step: 1, defaultValue: 3 },
+  ],
+  generate(params, calibrations): SessionTemplate[] {
+    const startMax = clamp(Math.round(params.startMax ?? 10), 1, 500)
+    const targetMax = clamp(Math.round(params.targetMax ?? startMax), startMax, 500)
+    const weeks = clamp(Math.round(params.weeks ?? 13), 2, 52)
+    const perWeek = clamp(Math.round(params.sessionsPerWeek ?? 3), 1, 7)
+    const total = weeks * perWeek + 1
+    const types = sessionTypes(weeks, perWeek)
+
+    return types.map((type, i) => {
+      const n = i + 1
+      const max = Math.round(predictedMaxAt(n, startMax, targetMax, total, calibrations))
+      return { index: n, type, predictedMax: max, sets: buildSets(max, type, (i % perWeek) + 1) }
+    })
+  },
+}

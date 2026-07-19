@@ -3,7 +3,18 @@ import type { Result, Unit } from '../core/types'
 import { actualsSummary, badgeVariant, TYPE_LABEL } from './format'
 
 /** Past sessions, newest first — across all plans of the exercise. */
-export function HistoryList({ results, unit, today }: { results: Result[]; unit: Unit; today: string }) {
+export function HistoryList({
+  results,
+  unit,
+  today,
+  predictedMax,
+}: {
+  results: Result[]
+  unit: Unit
+  today: string
+  /** Predicted max per "planId:sessionIndex", for plans whose generator models one. */
+  predictedMax?: ReadonlyMap<string, number>
+}) {
   if (results.length === 0) return null
   const sorted = [...results].sort(
     (a, b) => b.date.localeCompare(a.date) || b.sessionIndex - a.sessionIndex,
@@ -20,6 +31,9 @@ export function HistoryList({ results, unit, today }: { results: Result[]; unit:
               <span class="sets-line" style={{ flex: 1 }}>
                 {actualsSummary(r.sets, unit)}
               </span>
+              {predictedMax?.has(`${r.planId}:${r.sessionIndex}`) && (
+                <span class="max-hint">max ~{predictedMax.get(`${r.planId}:${r.sessionIndex}`)}</span>
+              )}
               {r.sessionType !== 'normal' && (
                 <span class="badge" data-variant={badgeVariant(r.sessionType)}>
                   {TYPE_LABEL[r.sessionType]}

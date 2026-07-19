@@ -42,12 +42,25 @@ function isAppData(value: unknown): value is AppData {
   )
 }
 
+/**
+ * One-shot data fixups (idempotent, run on every load/import):
+ * - Active logistic-v1 plans move to logistic-v2 — the owner wants running
+ *   plans on the improved math. Archived plans keep v1 so their history
+ *   derives exactly as it was generated.
+ */
+function migrate(d: AppData): AppData {
+  for (const p of d.plans) {
+    if (p.status === 'active' && p.generatorId === 'logistic-v1') p.generatorId = 'logistic-v2'
+  }
+  return d
+}
+
 function load(): AppData {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw)
-      if (isAppData(parsed)) return parsed
+      if (isAppData(parsed)) return migrate(parsed)
       console.error('Stored data has unexpected shape; starting fresh')
     }
   } catch (err) {
@@ -198,6 +211,7 @@ export function exportJSON(): string {
 export function importJSON(text: string): void {
   const parsed = JSON.parse(text)
   if (!isAppData(parsed)) throw new Error('Not a valid backup file')
-  db.value = parsed
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed))
+  const migrated = migrate(parsed)
+  db.value = migrated
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated))
 }

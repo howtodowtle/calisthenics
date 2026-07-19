@@ -19,6 +19,8 @@ export interface SessionView {
   week: number
   result?: Result
   status: 'done' | 'due' | 'upcoming'
+  /** From the generator, when its algorithm models one. */
+  predictedMax?: number
 }
 
 export interface PlanView {
@@ -68,6 +70,7 @@ export function derivePlanView(plan: Plan, results: Result[], today: string): Pl
       week: Math.floor(i / perWeek) + 1,
       result,
       status,
+      predictedMax: t.predictedMax,
     }
   })
 

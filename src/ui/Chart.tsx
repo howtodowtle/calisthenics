@@ -6,13 +6,16 @@ import { unitSuffix } from './format'
 
 /**
  * Progress chart: planned session volume as a line, completed volume as dots,
- * max tests as diamonds. Tap/drag reveals a crosshair + tooltip. Colors live
- * in --viz-* tokens (validated for both themes); text wears text tokens only.
+ * max tests as diamonds, and — when the generator models one — the predicted
+ * max as a dotted line on its own right-hand scale. Tap/drag reveals a
+ * crosshair + tooltip. Colors live in --viz-* tokens (validated for both
+ * themes); text wears text tokens only.
  */
 
 const W = 560
 const H = 190
 const PAD = { top: 12, right: 12, bottom: 24, left: 34 }
+const PAD_RIGHT_AXIS = 34 // right padding when the predicted-max axis is shown
 
 const volume = (sets: { target: number }[]) => sets.reduce((s, x) => s + x.target, 0)
 const actualVolume = (sets: { actual: number }[]) => sets.reduce((s, x) => s + x.actual, 0)
@@ -32,13 +35,25 @@ export function Chart({ sessions, unit, today }: { sessions: SessionView[]; unit
 
   const planned = sessions.map((s) => volume(s.sets))
   const actuals = sessions.map((s) => (s.result ? actualVolume(s.result.sets) : null))
+  const predicted = sessions.map((s) => s.predictedMax ?? null)
+  const hasMax = predicted.some((v) => v !== null)
+  const padRight = hasMax ? PAD_RIGHT_AXIS : PAD.right
+
   const maxY = Math.max(...planned, ...actuals.map((a) => a ?? 0)) * 1.08
   const ticks = niceTicks(maxY)
+  const maxY2 = hasMax ? Math.max(...predicted.map((v) => v ?? 0)) * 1.08 : 1
+  const ticks2 = hasMax ? niceTicks(maxY2).filter((t) => t > 0) : []
 
-  const x = (i: number) => PAD.left + (i * (W - PAD.left - PAD.right)) / (sessions.length - 1)
+  const x = (i: number) => PAD.left + (i * (W - PAD.left - padRight)) / (sessions.length - 1)
   const y = (v: number) => H - PAD.bottom - (v / maxY) * (H - PAD.top - PAD.bottom)
+  const y2 = (v: number) => H - PAD.bottom - (v / maxY2) * (H - PAD.top - PAD.bottom)
 
   const linePath = planned.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
+  const maxPath = hasMax
+    ? predicted
+        .map((v, i) => (v === null ? '' : `${i === 0 || predicted[i - 1] === null ? 'M' : 'L'}${x(i).toFixed(1)},${y2(v).toFixed(1)}`))
+        .join(' ')
+    : ''
 
   const weekTicks = sessions
     .map((s, i) => ({ week: s.week, i }))
@@ -50,7 +65,7 @@ export function Chart({ sessions, unit, today }: { sessions: SessionView[]; unit
     if (!svg) return
     const rect = svg.getBoundingClientRect()
     const px = ((clientX - rect.left) / rect.width) * W
-    const i = Math.round(((px - PAD.left) / (W - PAD.left - PAD.right)) * (sessions.length - 1))
+    const i = Math.round(((px - PAD.left) / (W - PAD.left - padRight)) * (sessions.length - 1))
     setPicked(Math.max(0, Math.min(sessions.length - 1, i)))
   }
 
@@ -70,11 +85,16 @@ export function Chart({ sessions, unit, today }: { sessions: SessionView[]; unit
       >
         {ticks.map((t) => (
           <g key={t}>
-            <line x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} class="viz-grid" />
+            <line x1={PAD.left} x2={W - padRight} y1={y(t)} y2={y(t)} class="viz-grid" />
             <text x={PAD.left - 6} y={y(t) + 3.5} class="viz-tick" text-anchor="end">
               {t}
             </text>
           </g>
+        ))}
+        {ticks2.map((t) => (
+          <text key={`r${t}`} x={W - padRight + 6} y={y2(t) + 3.5} class="viz-tick" text-anchor="start">
+            {t}
+          </text>
         ))}
         {weekTicks.map(({ week, i }) => (
           <text key={week} x={x(i)} y={H - 8} class="viz-tick" text-anchor="middle">
@@ -86,6 +106,7 @@ export function Chart({ sessions, unit, today }: { sessions: SessionView[]; unit
           <line x1={x(picked)} x2={x(picked)} y1={PAD.top} y2={H - PAD.bottom} class="viz-crosshair" />
         )}
 
+        {hasMax && <path d={maxPath} class="viz-maxline" />}
         <path d={linePath} class="viz-line" />
 
         {sessions.map((s, i) =>
@@ -113,6 +134,11 @@ export function Chart({ sessions, unit, today }: { sessions: SessionView[]; unit
         <span>
           <svg width="12" height="12"><path d="M6,1 l4.5,5 l-4.5,5 l-4.5,-5 z" class="viz-diamond" /></svg> Max test
         </span>
+        {hasMax && (
+          <span>
+            <svg width="18" height="8"><line x1="0" y1="4" x2="18" y2="4" class="viz-maxline" /></svg> Predicted max (right)
+          </span>
+        )}
       </div>
       </section>
 
@@ -123,6 +149,7 @@ export function Chart({ sessions, unit, today }: { sessions: SessionView[]; unit
           planned {planned[sessions.indexOf(sel)]}
           {sfx}
           {sel.result ? ` · done ${actualVolume(sel.result.sets)}${sfx}` : ''}
+          {sel.predictedMax != null ? ` · max ~${sel.predictedMax}${sfx}` : ''}
         </div>
       )}
     </div>

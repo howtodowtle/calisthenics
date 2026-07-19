@@ -1,5 +1,6 @@
 import type { Generator } from '../types'
 import { logisticV1 } from './logistic'
+import { logisticV2 } from './logistic2'
 
 /**
  * Generator registry. To add an algorithm:
@@ -9,7 +10,8 @@ import { logisticV1 } from './logistic'
  * 2. Add it to the list below. Settings UI and storage pick it up from here;
  *    no other code changes.
  */
-const generators: Generator[] = [logisticV1]
+// v2 first: it's the default in the plan-creation form.
+const generators: Generator[] = [logisticV2, logisticV1]
 
 export const registry: ReadonlyMap<string, Generator> = new Map(
   generators.map((g) => [g.id, g]),

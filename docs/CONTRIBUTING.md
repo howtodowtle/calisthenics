@@ -154,7 +154,9 @@ user would silently lose their plan to a fresh seed.
   at the bottom of the stylesheet (it already covers `animation`/`transition`).
 - The chart is two-tone: `--viz-planned` maps to `--muted-foreground`,
   `--viz-actual` to `--primary`. Series identity is still carried by shape and
-  the legend, so the accent color is never the only signal.
+  the legend, so the accent color is never the only signal. The predicted-max
+  series is the dotted `.viz-maxline` on its own right-hand scale; it only
+  renders when the generator sets `predictedMax` on its sessions.
 - Confirmation dialogs (`confirm()`) guard every destructive action (delete
   exercise/plan, import). Keep that — there is no undo.
 

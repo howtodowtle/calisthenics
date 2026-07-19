@@ -344,6 +344,13 @@ label {
   line-height: 1;
 }
 
+.session-row .max-hint {
+  color: var(--muted-foreground);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .session-row.done .sets-line {
   color: var(--muted-foreground);
 }
@@ -443,6 +450,15 @@ label {
   fill: none;
 }
 
+.viz-maxline {
+  stroke: var(--viz-planned);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+  stroke-linecap: round;
+  fill: none;
+  opacity: 0.8;
+}
+
 .viz-dot {
   fill: var(--viz-actual);
   stroke: var(--card);
@@ -457,10 +473,15 @@ label {
 
 .viz-legend {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 4px 16px;
   margin-top: 10px;
   font-size: 0.78rem;
   color: var(--muted-foreground);
+}
+
+.viz-legend span {
+  white-space: nowrap;
 }
 
 .viz-legend span {
