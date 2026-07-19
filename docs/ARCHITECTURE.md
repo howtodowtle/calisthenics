@@ -151,12 +151,20 @@ and taper (×0.6) / recovery (×0.85) structure; what changed:
   ~4 × 40% with a slight wave, alternating two patterns. Taper/recovery days
   always use the easy shape.
 - **No AMRAP outside tests** — every non-test set is a fixed target.
-- **Curve**: logistic with no initial lag, normalized to pass exactly through
-  `startMax` (session 1) and `targetMax` (final test).
-- **Calibration re-anchors**: after a test, the future is a fresh logistic from
+- **Curve**: a **Gompertz** sigmoid (not a symmetric logistic), normalized to
+  pass exactly through `startMax` (session 1) and `targetMax` (final test).
+  Rationale: training gains are asymmetric — fast early (neural adaptation,
+  form efficiency), then a long diminishing-returns grind toward the ceiling.
+  Gompertz puts the inflection at ~35% of the span; a symmetric logistic would
+  claim the biggest weekly jumps mid-plan, where there's no mechanism for them.
+  (The generator id stays `logistic-v2` — ids are opaque and stable.)
+- **Calibration re-anchors**: after a test, the future is a fresh Gompertz from
   the test result to `targetMax` over the remaining sessions — no decay back.
   Anchoring is piecewise per test, so earlier segments keep the curve they were
   generated from. A result at or above `targetMax` holds the curve flat there.
+  The early inflection composes well with this: each re-anchored segment pushes
+  in the fresh weeks right after a test + recovery and eases as the next test
+  approaches — a built-in mini-taper.
 - Every session carries **`predictedMax`**, which the UI prints on schedule and
   history rows and plots as the dotted right-axis line in the chart.
 

@@ -39,6 +39,21 @@ describe('logistic-v2 predicted max curve', () => {
     }
   })
 
+  it('is steep-left (Gompertz): first third gains more than last third', () => {
+    // Gains come fast early and grind slowly toward the ceiling — a symmetric
+    // logistic would make these two roughly equal.
+    const third = Math.floor(plan.length / 3)
+    const firstThird = plan[third - 1].predictedMax! - plan[0].predictedMax!
+    const lastThird = plan[plan.length - 1].predictedMax! - plan[plan.length - third].predictedMax!
+    expect(firstThird).toBeGreaterThan(lastThird)
+  })
+
+  it('crosses the halfway value before the halfway session (inflection ~35%)', () => {
+    const halfValue = (10 + 100) / 2
+    const crossing = plan.findIndex((s) => s.predictedMax! >= halfValue)
+    expect(crossing).toBeLessThan(plan.length / 2)
+  })
+
   it('every session carries a predictedMax', () => {
     for (const s of plan) expect(s.predictedMax).toBeGreaterThanOrEqual(1)
   })
@@ -110,7 +125,7 @@ describe('logistic-v2 calibration (re-anchor)', () => {
   })
 
   it('snaps the next session to the test result and still ends at targetMax', () => {
-    // Predicted at test 12 is ~21; the test came in low at 15.
+    // Predicted at test 12 is ~31; the test came in low at 15.
     const cal = logisticV2.generate(P, [{ sessionIndex: 12, actual: 15 }])
     expect(cal[12].predictedMax).toBeGreaterThanOrEqual(15)
     expect(cal[12].predictedMax).toBeLessThanOrEqual(16)
@@ -120,7 +135,7 @@ describe('logistic-v2 calibration (re-anchor)', () => {
   it('does not decay back: the whole future rides the new curve', () => {
     const cal = logisticV2.generate(P, [{ sessionIndex: 12, actual: 15 }])
     // Every future predicted max sits below the uncalibrated curve (which was
-    // ~6 reps optimistic at the test) until both converge at the target.
+    // ~16 reps optimistic at the test) until both converge at the target.
     for (let i = 12; i < 39; i++) {
       expect(cal[i].predictedMax!).toBeLessThanOrEqual(uncal[i].predictedMax!)
     }

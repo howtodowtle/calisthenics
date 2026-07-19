@@ -18,21 +18,35 @@ import type {
  *   easy. Other days are ~4 × 40% with a slight wave, alternating between two
  *   patterns.
  * - No AMRAP outside tests — every non-test set is a fixed target.
- * - The predicted-max curve is a logistic from startMax to targetMax with no
- *   initial lag, normalized to pass exactly through both endpoints.
- * - Calibration **re-anchors**: after a test, the future is a fresh logistic
+ * - The predicted-max curve is a **Gompertz** sigmoid from startMax to
+ *   targetMax, normalized to pass exactly through both endpoints. Gompertz
+ *   instead of a symmetric logistic because gains aren't symmetric: they come
+ *   fast early (neural adaptation, form efficiency) and then grind slowly
+ *   toward the ceiling. The inflection sits at ~35% of the span rather than
+ *   50%, so the steep phase lands in the first half and the back half is a
+ *   long, realistic approach — a symmetric logistic instead claims the
+ *   biggest jumps mid-plan, where there's no mechanism for them.
+ * - Calibration **re-anchors**: after a test, the future is a fresh Gompertz
  *   from the test result to targetMax over the remaining sessions — no decay
  *   back to the old trajectory. Anchoring is piecewise per test, so sessions
  *   before a later test keep the curve they were generated from. A result at
- *   or above targetMax holds the curve flat at that result.
+ *   or above targetMax holds the curve flat at that result. The early-
+ *   inflection shape composes well with re-anchoring: each segment pushes in
+ *   the fresh weeks right after a test + recovery and eases as the next test
+ *   approaches — a built-in mini-taper. (A symmetric curve would restart slow
+ *   after every test and shove the steepness ever later.)
  * - Test cadence, taper (×0.6) and recovery (×0.85) days are unchanged from
  *   v1; taper/recovery always use the easy shape, never the heavy set.
  *
  * Every session carries `predictedMax` so the UI can print and plot the curve.
+ *
+ * The id keeps the historical `logistic-v2` name — ids are opaque and stable,
+ * and this one shipped in the store migration before the curve became Gompertz.
  */
 
-const SWIFT_K = 0.25
-const SWIFT_SPAN = 35 // span the original k was tuned for; keeps the S-shape length-invariant
+const CURVE_K = 0.15 // steepness at the reference span; scaled to keep the shape length-invariant
+const CURVE_SPAN = 39 // reference span the steepness was tuned at (13 weeks × 3/week → 39 intervals)
+const INFLECTION = 0.35 // fraction of the span where growth peaks (Gompertz asymmetry)
 
 type Rounding = 'round' | 'floor'
 
@@ -77,14 +91,15 @@ function predictedMaxAt(
   if (anchorValue >= targetMax) return anchorValue
   const logEnd = totalSessions - 1
   if (anchorSession >= logEnd) return anchorValue
-  const k = SWIFT_K * (SWIFT_SPAN / (logEnd - anchorSession))
-  const midpoint = (anchorSession + logEnd) / 2
-  const sigma = (x: number) => 1 / (1 + Math.exp(-k * (x - midpoint)))
+  const span = logEnd - anchorSession
+  const k = CURVE_K * (CURVE_SPAN / span)
+  const t0 = anchorSession + INFLECTION * span
+  const gompertz = (x: number) => Math.exp(-Math.exp(-k * (x - t0)))
   // Normalize so the curve hits anchorValue at the anchor and targetMax at the
   // last pre-test session exactly (the final test then sits at targetMax too).
-  const lo = sigma(anchorSession)
-  const hi = sigma(logEnd)
-  const progress = clamp((sigma(n) - lo) / (hi - lo), 0, 1)
+  const lo = gompertz(anchorSession)
+  const hi = gompertz(logEnd)
+  const progress = clamp((gompertz(n) - lo) / (hi - lo), 0, 1)
   return anchorValue + (targetMax - anchorValue) * progress
 }
 
@@ -124,7 +139,7 @@ function buildSets(max: number, type: SessionType, dayInWeek: number): SetTempla
 
 export const logisticV2: Generator = {
   id: 'logistic-v2',
-  name: 'Logistic progression II',
+  name: 'Gompertz progression',
   description:
     'Four submaximal sets per session (~150% of predicted max total), one heavier ' +
     'day per week capped at 85%. Max test every 3 weeks re-anchors the curve.',
