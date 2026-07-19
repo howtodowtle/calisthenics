@@ -3,6 +3,7 @@ import { todayISO } from './dates'
 import type {
   AppData,
   Exercise,
+  Plan,
   ResultSet,
   SessionType,
   SetTemplate,
@@ -16,7 +17,7 @@ import type {
 
 const STORAGE_KEY = 'training-pwa'
 
-export const uid = (): string => crypto.randomUUID()
+const uid = (): string => crypto.randomUUID()
 
 function seed(): AppData {
   const now = new Date().toISOString()
@@ -80,6 +81,10 @@ function update(mutate: (draft: AppData) => void): void {
 
 // ---- exercises ----
 
+/** Exercises in display order. */
+export const sortedExercises = (d: AppData): Exercise[] =>
+  [...d.exercises].sort((a, b) => a.sortOrder - b.sortOrder)
+
 export function addExercise(name: string, emoji: string, unit: Unit): void {
   update((d) => {
     d.exercises.push({
@@ -112,6 +117,11 @@ export function deleteExercise(id: string): void {
 
 // ---- plans ----
 
+function archive(p: Plan): void {
+  p.status = 'archived'
+  p.stoppedAt = new Date().toISOString()
+}
+
 export function createPlan(
   exerciseId: string,
   generatorId: string,
@@ -121,10 +131,7 @@ export function createPlan(
   update((d) => {
     // Invariant: one active plan per exercise.
     for (const p of d.plans) {
-      if (p.exerciseId === exerciseId && p.status === 'active') {
-        p.status = 'archived'
-        p.stoppedAt = new Date().toISOString()
-      }
+      if (p.exerciseId === exerciseId && p.status === 'active') archive(p)
     }
     d.plans.push({
       id: uid(),
@@ -151,10 +158,7 @@ export function updatePlanParams(planId: string, params: Record<string, number>)
 export function stopPlan(planId: string): void {
   update((d) => {
     const p = d.plans.find((x) => x.id === planId)
-    if (p) {
-      p.status = 'archived'
-      p.stoppedAt = new Date().toISOString()
-    }
+    if (p) archive(p)
   })
 }
 

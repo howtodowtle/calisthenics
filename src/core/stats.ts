@@ -12,13 +12,14 @@ export interface ExerciseStats {
   streak: number
 }
 
+/** Sum of actuals across a set list. */
+export const sumActual = (sets: { actual: number }[]): number =>
+  sets.reduce((sum, s) => sum + s.actual, 0)
+
 /** `results` must already be filtered to one exercise (any of its plans). */
 export function exerciseStats(results: Result[], today: string): ExerciseStats {
   const sorted = [...results].sort((a, b) => a.date.localeCompare(b.date))
-  const totalActual = sorted.reduce(
-    (sum, r) => sum + r.sets.reduce((s, set) => s + set.actual, 0),
-    0,
-  )
+  const totalActual = sorted.reduce((sum, r) => sum + sumActual(r.sets), 0)
   let streak = 0
   for (let i = sorted.length - 1; i >= 0; i--) {
     const nextDate = i === sorted.length - 1 ? today : sorted[i + 1].date

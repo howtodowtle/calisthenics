@@ -1,8 +1,9 @@
 import { useRef, useState } from 'preact/hooks'
 import type { SessionView } from '../core/derive'
 import { formatDate } from '../core/dates'
+import { sumActual } from '../core/stats'
 import type { Unit } from '../core/types'
-import { unitSuffix } from './format'
+import { maxHint, unitSuffix } from './format'
 
 /**
  * Progress chart: planned session volume as a line, completed volume as dots,
@@ -18,7 +19,6 @@ const PAD = { top: 12, right: 12, bottom: 24, left: 34 }
 const PAD_RIGHT_AXIS = 34 // right padding when the predicted-max axis is shown
 
 const volume = (sets: { target: number }[]) => sets.reduce((s, x) => s + x.target, 0)
-const actualVolume = (sets: { actual: number }[]) => sets.reduce((s, x) => s + x.actual, 0)
 
 function niceTicks(max: number): number[] {
   const step = [1, 2, 5, 10, 20, 25, 50, 100, 200, 500].find((s) => max / s <= 4) ?? 1000
@@ -34,7 +34,7 @@ export function Chart({ sessions, unit, today }: { sessions: SessionView[]; unit
   if (sessions.length < 2) return null
 
   const planned = sessions.map((s) => volume(s.sets))
-  const actuals = sessions.map((s) => (s.result ? actualVolume(s.result.sets) : null))
+  const actuals = sessions.map((s) => (s.result ? sumActual(s.result.sets) : null))
   const predicted = sessions.map((s) => s.predictedMax ?? null)
   const hasMax = predicted.some((v) => v !== null)
   const padRight = hasMax ? PAD_RIGHT_AXIS : PAD.right
@@ -142,14 +142,14 @@ export function Chart({ sessions, unit, today }: { sessions: SessionView[]; unit
       </div>
       </section>
 
-      {sel && (
-        <div class="viz-tooltip" style={{ left: `${(x(sessions.indexOf(sel)) / W) * 100}%` }}>
+      {sel && picked !== null && (
+        <div class="viz-tooltip" style={{ left: `${(x(picked) / W) * 100}%` }}>
           <strong>Session {sel.index}</strong> · {formatDate(sel.date, today)}
           <br />
-          planned {planned[sessions.indexOf(sel)]}
+          planned {planned[picked]}
           {sfx}
-          {sel.result ? ` · done ${actualVolume(sel.result.sets)}${sfx}` : ''}
-          {sel.predictedMax != null ? ` · max ~${sel.predictedMax}${sfx}` : ''}
+          {sel.result ? ` · done ${sumActual(sel.result.sets)}${sfx}` : ''}
+          {sel.predictedMax != null ? ` · ${maxHint(sel.predictedMax, unit)}` : ''}
         </div>
       )}
     </div>

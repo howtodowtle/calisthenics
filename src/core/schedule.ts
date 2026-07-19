@@ -12,6 +12,15 @@ import { addDays, daysBetween } from './dates'
  * is the single place a smarter rescheduler would plug in later.
  */
 
+/**
+ * Reads `sessionsPerWeek` off a params blob — the one field the core requires
+ * of every generator (see Plan.params in types.ts) — clamped to the same 1–7
+ * range the generators themselves enforce.
+ */
+export function perWeekOf(params: Record<string, number>): number {
+  return Math.min(7, Math.max(1, Math.round(params.sessionsPerWeek ?? 3)))
+}
+
 export function baseDates(startDate: string, total: number, perWeek: number): string[] {
   const offsets = Array.from({ length: perWeek }, (_, d) => Math.floor((d * 7) / perWeek))
   return Array.from({ length: total }, (_, i) => {

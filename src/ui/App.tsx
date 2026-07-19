@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import { todayISO } from '../core/dates'
-import { db } from '../core/store'
+import { db, sortedExercises } from '../core/store'
 import { ExerciseTab } from './ExerciseTab'
 import { Settings } from './Settings'
 
@@ -22,7 +22,7 @@ function useToday(): string {
 export function App() {
   const data = db.value
   const today = useToday()
-  const exercises = [...data.exercises].sort((a, b) => a.sortOrder - b.sortOrder)
+  const exercises = sortedExercises(data)
 
   const [tab, setTab] = useState<string>(
     () => localStorage.getItem('ui.tab') ?? exercises[0]?.id ?? 'settings',
@@ -54,7 +54,7 @@ export function App() {
 
   return (
     <>
-      {(exercise || exercises.length > 0) && (
+      {exercises.length > 0 && (
         <button
           class="settings-btn"
           aria-label={exercise ? 'Settings' : 'Close settings'}

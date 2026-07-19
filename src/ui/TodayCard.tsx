@@ -3,7 +3,7 @@ import type { SessionView } from '../core/derive'
 import { formatDate } from '../core/dates'
 import { logSession } from '../core/store'
 import type { Exercise, ResultSet } from '../core/types'
-import { badgeVariant, TYPE_LABEL, unitSuffix } from './format'
+import { SessionBadges, unitSuffix } from './format'
 
 /**
  * One-tap logging: Done logs every set at target. Sets that need a real
@@ -55,16 +55,7 @@ export function TodayCard({
         <span class="today-title">
           Week {session.week} · Session {session.index}
         </span>
-        {session.type !== 'normal' && (
-          <span class="badge" data-variant={badgeVariant(session.type)}>
-            {TYPE_LABEL[session.type]}
-          </span>
-        )}
-        {session.overridden && (
-          <span class="badge" data-variant="outline">
-            edited
-          </span>
-        )}
+        <SessionBadges type={session.type} overridden={session.overridden} />
       </div>
       {session.type === 'test' ? (
         <p class="dim">Single set — as many as you can. Result recalibrates the rest of the plan.</p>

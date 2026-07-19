@@ -316,7 +316,7 @@ label {
   cursor: pointer;
   transition: background var(--dur-fast) ease;
   /* Rows cascade in; components set --i per row. */
-  animation: fade-up 0.3s var(--ease-out-expo) backwards;
+  animation: fade-up var(--dur-slow) var(--ease-out-expo) backwards;
   animation-delay: var(--i, 0ms);
 }
 
@@ -517,9 +517,6 @@ label {
 
 .viz-legend span {
   white-space: nowrap;
-}
-
-.viz-legend span {
   display: inline-flex;
   align-items: center;
   gap: 5px;

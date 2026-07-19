@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks'
 import { todayISO } from '../core/dates'
-import { baseDates } from '../core/schedule'
+import { baseDates, perWeekOf } from '../core/schedule'
 import { getGenerator, registry } from '../core/generators'
 import {
   addExercise,
@@ -10,15 +10,16 @@ import {
   deletePlan,
   exportJSON,
   importJSON,
+  sortedExercises,
   stopPlan,
   updateExercise,
   updatePlanParams,
 } from '../core/store'
-import type { Exercise, Plan, Unit } from '../core/types'
+import type { Exercise, Generator, Plan, Unit } from '../core/types'
 
 export function Settings({ onSelectExercise }: { onSelectExercise: (id: string) => void }) {
   const data = db.value
-  const exercises = [...data.exercises].sort((a, b) => a.sortOrder - b.sortOrder)
+  const exercises = sortedExercises(data)
 
   return (
     <>
@@ -270,6 +271,9 @@ function AddExercise() {
 
 // ---- plans ----
 
+const defaultParams = (g: Generator): Record<string, number> =>
+  Object.fromEntries(g.paramFields.map((f) => [f.key, f.defaultValue]))
+
 /** Create (no `initial`) or edit params (with `initial`). Form fields render
  * themselves from the generator's declarative paramFields. */
 function PlanForm({
@@ -285,7 +289,7 @@ function PlanForm({
   const [generatorId, setGeneratorId] = useState(initial?.generatorId ?? generators[0].id)
   const gen = getGenerator(generatorId)
   const [params, setParams] = useState<Record<string, number>>(
-    () => initial?.params ?? Object.fromEntries(gen.paramFields.map((f) => [f.key, f.defaultValue])),
+    () => initial?.params ?? defaultParams(gen),
   )
   const [startDate, setStartDate] = useState(initial?.startDate ?? todayISO())
 
@@ -293,8 +297,7 @@ function PlanForm({
   const preview = (() => {
     try {
       const sessions = gen.generate(params, initial?.calibrations ?? [])
-      const perWeek = Math.max(1, Math.round(params.sessionsPerWeek ?? 3))
-      const dates = baseDates(startDate, sessions.length, perWeek)
+      const dates = baseDates(startDate, sessions.length, perWeekOf(params))
       return { count: sessions.length, end: dates[dates.length - 1] }
     } catch {
       return null
@@ -318,9 +321,7 @@ function PlanForm({
             onChange={(e) => {
               const id = (e.target as HTMLSelectElement).value
               setGeneratorId(id)
-              setParams(
-                Object.fromEntries(getGenerator(id).paramFields.map((f) => [f.key, f.defaultValue])),
-              )
+              setParams(defaultParams(getGenerator(id)))
             }}
           >
             {generators.map((g) => (

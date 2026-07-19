@@ -91,7 +91,6 @@ export interface ParamField {
   max: number
   step: number
   defaultValue: number
-  help?: string
 }
 
 export interface Generator {

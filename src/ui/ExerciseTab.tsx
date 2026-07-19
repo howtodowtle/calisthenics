@@ -1,4 +1,4 @@
-import { derivePlanView } from '../core/derive'
+import { derivePlanView, predictedMaxIndex } from '../core/derive'
 import { formatDate } from '../core/dates'
 import { exerciseStats } from '../core/stats'
 import { db } from '../core/store'
@@ -24,12 +24,7 @@ export function ExerciseTab({
   const stats = exerciseStats(results, today)
   const view = activePlan ? derivePlanView(activePlan, data.results, today) : null
   // History rows of the active plan show the max they were planned around.
-  const predictedMax = new Map<string, number>()
-  if (view && activePlan) {
-    for (const s of view.sessions) {
-      if (s.predictedMax != null) predictedMax.set(`${activePlan.id}:${s.index}`, s.predictedMax)
-    }
-  }
+  const predictedMax = view ? predictedMaxIndex(view) : undefined
 
   return (
     <>
@@ -42,13 +37,13 @@ export function ExerciseTab({
         )}
       </h1>
 
-      {view && activePlan ? (
+      {view ? (
         <>
           {view.due ? (
             <TodayCard
-              key={`${activePlan.id}:${view.due.index}`}
+              key={`${view.plan.id}:${view.due.index}`}
               session={view.due}
-              planId={activePlan.id}
+              planId={view.plan.id}
               exercise={exercise}
               today={today}
             />
@@ -76,7 +71,7 @@ export function ExerciseTab({
 
           <ScheduleList
             sessions={view.sessions}
-            planId={activePlan.id}
+            planId={view.plan.id}
             exercise={exercise}
             today={today}
           />

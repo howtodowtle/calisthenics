@@ -50,7 +50,7 @@ describe('derivePlanView', () => {
     expect(view.endDate).toBe('2026-10-23')
   })
 
-  it('applies overrides without losing generated sets', () => {
+  it('applies overrides and flags the session as edited', () => {
     const edited: Plan = {
       ...plan,
       overrides: { 2: { sets: [{ target: 99, isMinimum: false }] } },
@@ -59,7 +59,6 @@ describe('derivePlanView', () => {
     const s2 = view.sessions[1]
     expect(s2.overridden).toBe(true)
     expect(s2.sets[0].target).toBe(99)
-    expect(s2.generatedSets[0].target).not.toBe(99)
   })
 
   it('keeps completed sessions as facts when params change', () => {

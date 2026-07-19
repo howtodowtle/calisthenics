@@ -3,7 +3,7 @@ import type { SessionView } from '../core/derive'
 import { formatDate } from '../core/dates'
 import { clearOverride, setOverride } from '../core/store'
 import type { Exercise } from '../core/types'
-import { badgeVariant, setsSummary, TYPE_LABEL } from './format'
+import { maxHint, SessionBadges, setsSummary } from './format'
 
 /**
  * Upcoming sessions. Tapping a row opens an inline editor; saving stores a
@@ -44,17 +44,10 @@ export function ScheduleList({
                 <span class="sets-line" style={{ flex: 1 }}>
                   {setsSummary(s.sets, exercise.unit)}
                 </span>
-                {s.type !== 'normal' && (
-                  <span class="badge" data-variant={badgeVariant(s.type)}>
-                    {TYPE_LABEL[s.type]}
-                  </span>
+                <SessionBadges type={s.type} overridden={s.overridden} />
+                {s.predictedMax != null && (
+                  <span class="max-hint">{maxHint(s.predictedMax, exercise.unit)}</span>
                 )}
-                {s.overridden && (
-                  <span class="badge" data-variant="outline">
-                    edited
-                  </span>
-                )}
-                {s.predictedMax != null && <span class="max-hint">max ~{s.predictedMax}</span>}
                 <span class="chev">›</span>
               </button>
             ),

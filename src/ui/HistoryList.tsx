@@ -1,6 +1,6 @@
 import { formatDate } from '../core/dates'
 import type { Result, Unit } from '../core/types'
-import { actualsSummary, badgeVariant, TYPE_LABEL } from './format'
+import { actualsSummary, maxHint, SessionBadges } from './format'
 
 /** Past sessions, newest first — across all plans of the exercise. */
 export function HistoryList({
@@ -31,13 +31,11 @@ export function HistoryList({
               <span class="sets-line" style={{ flex: 1 }}>
                 {actualsSummary(r.sets, unit)}
               </span>
-              {r.sessionType !== 'normal' && (
-                <span class="badge" data-variant={badgeVariant(r.sessionType)}>
-                  {TYPE_LABEL[r.sessionType]}
-                </span>
-              )}
+              <SessionBadges type={r.sessionType} />
               {predictedMax?.has(`${r.planId}:${r.sessionIndex}`) && (
-                <span class="max-hint">max ~{predictedMax.get(`${r.planId}:${r.sessionIndex}`)}</span>
+                <span class="max-hint">
+                  {maxHint(predictedMax.get(`${r.planId}:${r.sessionIndex}`)!, unit)}
+                </span>
               )}
             </div>
           ))}

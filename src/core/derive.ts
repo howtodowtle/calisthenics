@@ -1,5 +1,5 @@
 import { getGenerator } from './generators'
-import { baseDates, shiftedDates } from './schedule'
+import { baseDates, perWeekOf, shiftedDates } from './schedule'
 import type { Plan, Result, SessionType, SetTemplate } from './types'
 
 /**
@@ -12,7 +12,6 @@ export interface SessionView {
   type: SessionType
   /** Effective sets: override if present, generated otherwise. */
   sets: SetTemplate[]
-  generatedSets: SetTemplate[]
   overridden: boolean
   /** Result completion date for done sessions, shifted schedule date otherwise. */
   date: string
@@ -35,7 +34,7 @@ export interface PlanView {
 }
 
 export function derivePlanView(plan: Plan, results: Result[], today: string): PlanView {
-  const perWeek = Math.max(1, Math.round(plan.params.sessionsPerWeek ?? 3))
+  const perWeek = perWeekOf(plan.params)
   const templates = getGenerator(plan.generatorId).generate(plan.params, plan.calibrations)
 
   const resultByIndex = new Map<number, Result>()
@@ -64,7 +63,6 @@ export function derivePlanView(plan: Plan, results: Result[], today: string): Pl
       index: t.index,
       type: t.type,
       sets: override ? override.sets : t.sets,
-      generatedSets: t.sets,
       overridden: Boolean(override),
       date: result ? result.date : dates[i],
       week: Math.floor(i / perWeek) + 1,
@@ -85,4 +83,16 @@ export function derivePlanView(plan: Plan, results: Result[], today: string): Pl
     endDate: dates[dates.length - 1],
     completedCount: resultByIndex.size,
   }
+}
+
+/**
+ * predictedMax per "planId:sessionIndex" key — lets history rows (which span
+ * plans) look up the max a session was planned around.
+ */
+export function predictedMaxIndex(view: PlanView): Map<string, number> {
+  const map = new Map<string, number>()
+  for (const s of view.sessions) {
+    if (s.predictedMax != null) map.set(`${view.plan.id}:${s.index}`, s.predictedMax)
+  }
+  return map
 }

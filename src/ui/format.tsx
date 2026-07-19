@@ -13,7 +13,10 @@ export function actualsSummary(sets: ResultSet[], unit: Unit): string {
   return sets.map((s) => `${s.actual}${sfx}`).join(' · ')
 }
 
-export const TYPE_LABEL: Record<SessionType, string> = {
+/** The "max ~N" hint printed on rows and in the chart tooltip. */
+export const maxHint = (value: number, unit: Unit): string => `max ~${value}${unitSuffix(unit)}`
+
+const TYPE_LABEL: Record<SessionType, string> = {
   normal: '',
   test: 'Max test',
   taper: 'Taper',
@@ -22,5 +25,24 @@ export const TYPE_LABEL: Record<SessionType, string> = {
 
 /** Basecoat badge variant per session type: tests get the strong (primary)
  * badge, everything else the muted secondary one. */
-export const badgeVariant = (type: SessionType): string | undefined =>
+const badgeVariant = (type: SessionType): string | undefined =>
   type === 'test' ? undefined : 'secondary'
+
+/** The session-type badge plus the "edited" (override) badge, shared by the
+ * today card, schedule rows and history rows. */
+export function SessionBadges({ type, overridden }: { type: SessionType; overridden?: boolean }) {
+  return (
+    <>
+      {type !== 'normal' && (
+        <span class="badge" data-variant={badgeVariant(type)}>
+          {TYPE_LABEL[type]}
+        </span>
+      )}
+      {overridden && (
+        <span class="badge" data-variant="outline">
+          edited
+        </span>
+      )}
+    </>
+  )
+}
