@@ -44,6 +44,8 @@ import type {
  *   heavy set.
  *
  * Every session carries `predictedMax` so the UI can print and plot the curve.
+ * Set math always runs on the true (float) curve value; `predictedMax` is the
+ * floored display version of it — 11.9 reps is still only 11, never 12.
  *
  * The id keeps the historical `logistic-v2` name — ids are opaque and stable,
  * and this one shipped in the store migration before the curve became Gompertz.
@@ -90,7 +92,7 @@ function predictedMaxAt(
   for (const c of calibrations) {
     if (c.sessionIndex < n && c.sessionIndex >= anchorSession) {
       anchorSession = c.sessionIndex
-      anchorValue = clamp(Math.floor(c.actual), 1, 500)
+      anchorValue = clamp(c.actual, 1, 500)
     }
   }
   if (anchorValue >= targetMax) return anchorValue
@@ -136,9 +138,15 @@ function pickTemplate(type: SessionType, dayInWeek: number): DayTemplate {
   return dayInWeek % 2 === 0 ? DAY_TEMPLATES.easyA : DAY_TEMPLATES.easyB
 }
 
-function buildSets(max: number, type: SessionType, dayInWeek: number): SetTemplate[] {
-  if (type === 'test') return [{ target: max, isMinimum: false }]
-  const base = max * (REDUCTION[type] ?? 1)
+function buildSets(
+  trueMax: number,
+  shownMax: number,
+  type: SessionType,
+  dayInWeek: number,
+): SetTemplate[] {
+  // A test's target is the prediction the user sees, so it uses the floored max.
+  if (type === 'test') return [{ target: shownMax, isMinimum: false }]
+  const base = trueMax * (REDUCTION[type] ?? 1)
   const tpl = pickTemplate(type, dayInWeek)
   return tpl.fractions.map((fraction, i) => ({
     target: Math.max(1, Math[tpl.rounding[i]](fraction * base)),
@@ -169,13 +177,17 @@ export const logisticV2: Generator = {
 
     return types.map((type, i) => {
       const n = i + 1
-      // Floor, never round up: being able to do 11.9 reps is still only 11.
+      // All set math runs on the true (float) curve; only the displayed
+      // predictedMax floors it — being able to do 11.9 reps is still only 11.
       // The epsilon absorbs float noise so exact curve endpoints stay exact.
-      const max = Math.max(
-        1,
-        Math.floor(predictedMaxAt(n, startMax, targetMax, total, calibrations) + 1e-9),
-      )
-      return { index: n, type, predictedMax: max, sets: buildSets(max, type, (i % perWeek) + 1) }
+      const trueMax = predictedMaxAt(n, startMax, targetMax, total, calibrations)
+      const shownMax = Math.max(1, Math.floor(trueMax + 1e-9))
+      return {
+        index: n,
+        type,
+        predictedMax: shownMax,
+        sets: buildSets(trueMax, shownMax, type, (i % perWeek) + 1),
+      }
     })
   },
 }
