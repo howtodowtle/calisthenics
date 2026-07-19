@@ -1,3 +1,4 @@
+import { Settings as SettingsIcon } from 'lucide-preact'
 import { useState } from 'preact/hooks'
 import { todayISO } from '../core/dates'
 import { previewPlan } from '../core/derive'
@@ -23,7 +24,9 @@ export function Settings({ onSelectExercise }: { onSelectExercise: (id: string) 
 
   return (
     <>
-      <h1>⚙️ Settings</h1>
+      <h1>
+        <SettingsIcon size={22} aria-hidden /> Settings
+      </h1>
 
       <h2>Exercises</h2>
       {exercises.map((e) => (

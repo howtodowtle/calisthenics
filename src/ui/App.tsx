@@ -1,9 +1,12 @@
+import { CircleQuestionMark, Settings as SettingsIcon, X } from 'lucide-preact'
 import { useEffect, useState } from 'preact/hooks'
 import { todayISO } from '../core/dates'
-import { db, sortedExercises } from '../core/store'
+import { derivePlanView } from '../core/derive'
+import { activePlanFor, db, resultsForExercise, sortedExercises } from '../core/store'
 import { ExerciseTab } from './ExerciseTab'
 import { Help } from './Help'
 import { Settings } from './Settings'
+import { updateTabBadge } from './tabBadge'
 
 /** Re-render on app foregrounding so "today" stays correct across midnight. */
 function useToday(): string {
@@ -39,6 +42,13 @@ export function App() {
 
   const exercise = exercises.find((e) => e.id === activeTab)
 
+  // Tab/app-icon notification: how many exercises have a session due today.
+  const dueCount = exercises.filter((e) => {
+    const plan = activePlanFor(data, e.id)
+    return plan && derivePlanView(plan, resultsForExercise(data, e.id), today).due !== null
+  }).length
+  useEffect(() => updateTabBadge(dueCount), [dueCount])
+
   // Settings and Help are not tabs: they live behind the fixed buttons
   // top-right, which toggle back to the exercise that was open.
   const [lastExercise, setLastExercise] = useState<string | null>(null)
@@ -59,15 +69,15 @@ export function App() {
         (exercise ? (
           <>
             <button class="settings-btn help-btn" aria-label="Help" onClick={() => openPage('help')}>
-              ?
+              <CircleQuestionMark size={19} aria-hidden />
             </button>
             <button class="settings-btn" aria-label="Settings" onClick={() => openPage('settings')}>
-              ⚙️
+              <SettingsIcon size={19} aria-hidden />
             </button>
           </>
         ) : (
           <button class="settings-btn" aria-label="Close" onClick={closePage}>
-            ✕
+            <X size={19} aria-hidden />
           </button>
         ))}
       {exercise ? (

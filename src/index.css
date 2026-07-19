@@ -93,13 +93,17 @@ h1 {
   letter-spacing: -0.025em;
   margin: 20px 4px 14px;
   display: flex;
-  align-items: baseline;
-  gap: 10px;
-  /* Clear the fixed settings button in the top-right corner. */
-  padding-right: 48px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  /* Clear the fixed help + settings buttons in the top-right corner. */
+  padding-right: 96px;
 }
 
 h1 small {
+  /* The "1/33 · ends …" subtitle gets its own line — the title row is tight
+     on phones next to the fixed buttons. */
+  flex-basis: 100%;
   font-size: 0.8rem;
   font-weight: 450;
   letter-spacing: 0;
@@ -123,6 +127,16 @@ h2 {
 .sets-line {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
+}
+
+/* Icon-only session-type badges (lucide) — square padding, no text metrics. */
+.badge-icon {
+  padding: 4px;
+  line-height: 0;
+}
+
+.badge-icon svg {
+  display: block;
 }
 
 /* ---- layout helpers ---- */
@@ -365,6 +379,18 @@ label {
   }
 }
 
+/* Narrow phones: tighten the date column so sets + badges + max-hint fit. */
+@media (max-width: 400px) {
+  .session-row {
+    gap: 8px;
+  }
+
+  .session-row .date {
+    flex-basis: 74px;
+    font-size: 0.78rem;
+  }
+}
+
 .session-editor {
   padding: 10px 0;
   border-bottom: 1px solid var(--border);
@@ -398,8 +424,6 @@ label {
 /* Help sits one slot left of the gear (40px button + 8px gap). */
 .help-btn {
   right: max(62px, calc(50vw - 280px + 62px));
-  font-size: 1rem;
-  font-weight: 600;
 }
 
 .settings-btn:active {

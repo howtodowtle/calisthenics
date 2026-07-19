@@ -90,7 +90,7 @@ function predictedMaxAt(
   for (const c of calibrations) {
     if (c.sessionIndex < n && c.sessionIndex >= anchorSession) {
       anchorSession = c.sessionIndex
-      anchorValue = clamp(Math.round(c.actual), 1, 500)
+      anchorValue = clamp(Math.floor(c.actual), 1, 500)
     }
   }
   if (anchorValue >= targetMax) return anchorValue
@@ -169,7 +169,12 @@ export const logisticV2: Generator = {
 
     return types.map((type, i) => {
       const n = i + 1
-      const max = Math.round(predictedMaxAt(n, startMax, targetMax, total, calibrations))
+      // Floor, never round up: being able to do 11.9 reps is still only 11.
+      // The epsilon absorbs float noise so exact curve endpoints stay exact.
+      const max = Math.max(
+        1,
+        Math.floor(predictedMaxAt(n, startMax, targetMax, total, calibrations) + 1e-9),
+      )
       return { index: n, type, predictedMax: max, sets: buildSets(max, type, (i % perWeek) + 1) }
     })
   },

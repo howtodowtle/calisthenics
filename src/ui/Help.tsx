@@ -1,8 +1,12 @@
+import { CircleQuestionMark } from 'lucide-preact'
+
 /** Minimal how-to page, opened via the "?" button next to Settings. */
 export function Help() {
   return (
     <>
-      <h1>❓ How this works</h1>
+      <h1>
+        <CircleQuestionMark size={22} aria-hidden /> How this works
+      </h1>
 
       <h2>The idea</h2>
       <p>

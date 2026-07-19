@@ -174,6 +174,11 @@ describe('logistic-v2 calibration (re-anchor)', () => {
     expect(cal[39].sets[0].target).toBe(120)
   })
 
+  it('floors the predicted max — 11.9 reps is still only 11, never 12', () => {
+    const cal = logisticV2.generate(P, [{ sessionIndex: 1, actual: 11.9 }])
+    expect(cal[1].predictedMax).toBe(11)
+  })
+
   it('anchors piecewise: a later test never rewrites the segment before it', () => {
     const one = logisticV2.generate(P, [{ sessionIndex: 12, actual: 15 }])
     const two = logisticV2.generate(P, [

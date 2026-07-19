@@ -47,7 +47,11 @@ export function ExerciseTab({
               today={today}
             />
           ) : (
-            <RestCard next={view.next} today={today} />
+            <RestCard
+              next={view.next}
+              today={today}
+              doneToday={results.some((r) => r.date === today)}
+            />
           )}
 
           <div class="stats-row">

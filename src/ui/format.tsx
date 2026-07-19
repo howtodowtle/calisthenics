@@ -1,3 +1,4 @@
+import { FlaskConical, Focus, Pencil, RockingChair } from 'lucide-preact'
 import { toUTCNoon } from '../core/dates'
 import type { ResultSet, SessionType, SetTemplate, Unit } from '../core/types'
 
@@ -37,27 +38,36 @@ export function actualsSummary(sets: ResultSet[], unit: Unit): string {
 /** The "max ~N" hint printed on rows and in the chart tooltip. */
 export const maxHint = (value: number, unit: Unit): string => `max ~${value}${unitSuffix(unit)}`
 
-const TYPE_LABEL: Record<SessionType, string> = {
-  normal: '',
-  test: 'Max test',
-  taper: 'Taper',
-  recovery: 'Recovery',
+/** Icon-only badges keep session rows compact on phone-width screens; the
+ * label survives as tooltip + accessible name. Max test = the "lab" (flask),
+ * taper = narrowing focus on the goal, recovery = rocking chair. */
+const TYPE_BADGE: Record<SessionType, { icon: typeof FlaskConical; label: string } | null> = {
+  normal: null,
+  test: { icon: FlaskConical, label: 'Max test' },
+  taper: { icon: Focus, label: 'Taper' },
+  recovery: { icon: RockingChair, label: 'Recovery' },
 }
 
 /** The session-type badge plus the "edited" (override) badge, shared by the
  * today card, schedule rows and history rows. Tests get the strong (primary)
  * badge, everything else the muted secondary one. */
 export function SessionBadges({ type, overridden }: { type: SessionType; overridden?: boolean }) {
+  const badge = TYPE_BADGE[type]
   return (
     <>
-      {type !== 'normal' && (
-        <span class="badge" data-variant={type === 'test' ? undefined : 'secondary'}>
-          {TYPE_LABEL[type]}
+      {badge && (
+        <span
+          class="badge badge-icon"
+          data-variant={type === 'test' ? undefined : 'secondary'}
+          title={badge.label}
+          aria-label={badge.label}
+        >
+          <badge.icon size={13} strokeWidth={2.25} aria-hidden />
         </span>
       )}
       {overridden && (
-        <span class="badge" data-variant="outline">
-          edited
+        <span class="badge badge-icon" data-variant="outline" title="Edited" aria-label="Edited">
+          <Pencil size={13} strokeWidth={2.25} aria-hidden />
         </span>
       )}
     </>
