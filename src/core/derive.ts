@@ -31,6 +31,9 @@ export interface PlanView {
   next: SessionView | null
   endDate: string
   completedCount: number
+  /** A session of this exercise was logged today — any plan, so finishing an
+   * old plan's session still counts as having trained. */
+  completedToday: boolean
 }
 
 export function derivePlanView(plan: Plan, results: Result[], today: string): PlanView {
@@ -82,6 +85,7 @@ export function derivePlanView(plan: Plan, results: Result[], today: string): Pl
     next,
     endDate: dates[dates.length - 1],
     completedCount: resultByIndex.size,
+    completedToday: results.some((r) => r.date === today),
   }
 }
 

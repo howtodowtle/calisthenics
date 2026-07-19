@@ -1,5 +1,6 @@
 import { FlaskConical, Focus, Pencil, RockingChair } from 'lucide-preact'
 import { toUTCNoon } from '../core/dates'
+import { flooredMax } from '../core/stats'
 import type { ResultSet, SessionType, SetTemplate, Unit } from '../core/types'
 
 /** "Today" / "Tomorrow" / "Yesterday", otherwise a short weekday-and-date. */
@@ -35,8 +36,10 @@ export function actualsSummary(sets: ResultSet[], unit: Unit): string {
   return sets.map((s) => `${s.actual}${sfx}`).join(' · ')
 }
 
-/** The "max ~N" hint printed on rows and in the chart tooltip. */
-export const maxHint = (value: number, unit: Unit): string => `max ~${value}${unitSuffix(unit)}`
+/** The "max ~N" hint printed on rows and in the chart tooltip. Floors the
+ * (float) predicted max — the displayed number never rounds up. */
+export const maxHint = (value: number, unit: Unit): string =>
+  `max ~${flooredMax(value)}${unitSuffix(unit)}`
 
 /** Icon-only badges keep session rows compact on phone-width screens; the
  * label survives as tooltip + accessible name. Max test = the "lab" (flask),

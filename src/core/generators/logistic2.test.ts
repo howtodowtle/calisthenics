@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { flooredMax, sumTarget } from '../stats'
 import { logisticV1 } from './logistic'
 import { logisticV2 } from './logistic2'
 
@@ -19,9 +20,9 @@ describe('logistic-v2 layout', () => {
     expect(plan[0].sets).toEqual([{ target: 10, isMinimum: false }])
   })
 
-  it('tests are a single set at the predicted max', () => {
+  it('tests are a single set at the (floored) predicted max', () => {
     for (const s of plan.filter((x) => x.type === 'test')) {
-      expect(s.sets).toEqual([{ target: s.predictedMax, isMinimum: false }])
+      expect(s.sets).toEqual([{ target: flooredMax(s.predictedMax!), isMinimum: false }])
     }
   })
 
@@ -67,35 +68,33 @@ describe('logistic-v2 predicted max curve', () => {
 
 describe('logistic-v2 session volume', () => {
   const plan = logisticV2.generate(P, [])
+  // Flat curve (start = target) keeps the true max at exactly 100, so set
+  // patterns come out clean.
+  const flat = logisticV2.generate({ ...P, startMax: 100, targetMax: 100 }, [])
 
-  it('normal sessions land at ~140-160% of predicted max (rounding + floor slack)', () => {
-    // Sets derive from the true (float) max; predictedMax floors it, so the
-    // ratio vs the displayed value can sit up to ~1/25 above the design band.
+  it('normal sessions land at ~140-160% of predicted max (rounding slack)', () => {
     for (const s of plan) {
       if (s.type !== 'normal' || s.predictedMax! < 25) continue
-      const vol = s.sets.reduce((sum, x) => sum + x.target, 0)
-      const ratio = vol / s.predictedMax!
+      const ratio = sumTarget(s.sets) / s.predictedMax!
       expect(ratio, `session ${s.index}`).toBeGreaterThanOrEqual(1.35)
-      expect(ratio, `session ${s.index}`).toBeLessThanOrEqual(1.72)
+      expect(ratio, `session ${s.index}`).toBeLessThanOrEqual(1.65)
     }
   })
 
-  it('no non-test set exceeds 85% of the true max (< predictedMax + 1)', () => {
+  it('no non-test set exceeds 85% of the predicted max', () => {
     for (const s of plan) {
       if (s.type === 'test') continue
       for (const set of s.sets) {
         expect(set.target, `session ${s.index}`).toBeLessThanOrEqual(
-          Math.max(1, 0.85 * (s.predictedMax! + 1)),
+          Math.max(1, 0.85 * s.predictedMax!),
         )
       }
     }
   })
 
   it('first normal day of the week is the heavy day; other days are the two easy waves', () => {
-    // Flat curve (start = target) so the true max is exactly 100 and the
-    // patterns come out clean. Week 1 is the opening max test + recovery, so
-    // the first heavy day is week 2, day 1 (session 4).
-    const flat = logisticV2.generate({ ...P, startMax: 100, targetMax: 100 }, [])
+    // Week 1 is the opening max test + recovery, so the first heavy day is
+    // week 2, day 1 (session 4): warm-up, capped top set, two easy closers.
     expect(flat[3].type).toBe('normal')
     expect(flat[3].sets.map((s) => s.target)).toEqual([20, 85, 20, 20])
     // Sessions 5 and 6 follow easy patterns A and B.
@@ -103,15 +102,7 @@ describe('logistic-v2 session volume', () => {
     expect(flat[5].sets.map((s) => s.target)).toEqual([35, 40, 45, 35])
   })
 
-  it('heavy day at a clean max is exact: 100 → 20/85/20/20', () => {
-    // Flat curve (start = target = 100) so the heavy day sits at a clean max.
-    const big = logisticV2.generate({ ...P, startMax: 100, targetMax: 100 }, [])
-    expect(big[3].sets.map((s) => s.target)).toEqual([20, 85, 20, 20])
-  })
-
   it('taper and recovery days scale the easy shape down and never go heavy', () => {
-    // Flat curve so predictedMax equals the true max exactly.
-    const flat = logisticV2.generate({ ...P, startMax: 100, targetMax: 100 }, [])
     for (const s of flat) {
       if (s.type !== 'taper' && s.type !== 'recovery') continue
       const reduction = s.type === 'taper' ? 0.6 : 0.85
@@ -166,9 +157,10 @@ describe('logistic-v2 calibration (re-anchor)', () => {
     expect(cal[39].sets[0].target).toBe(120)
   })
 
-  it('floors the displayed max — 11.9 reps is still only 11, never 12', () => {
+  it('keeps the true float in predictedMax; display floors it — 11.9 is still 11', () => {
     const cal = logisticV2.generate(P, [{ sessionIndex: 1, actual: 11.9 }])
-    expect(cal[1].predictedMax).toBe(11)
+    expect(cal[1].predictedMax!).toBeGreaterThanOrEqual(11.9)
+    expect(flooredMax(cal[1].predictedMax!)).toBe(11)
   })
 
   it('builds sets from the true (unfloored) max — flooring is display-only', () => {
@@ -176,9 +168,8 @@ describe('logistic-v2 calibration (re-anchor)', () => {
     // more work because the set math rides the true float curve.
     const hi = logisticV2.generate(P, [{ sessionIndex: 1, actual: 11.9 }])
     const lo = logisticV2.generate(P, [{ sessionIndex: 1, actual: 11.0 }])
-    expect(hi[1].predictedMax).toBe(lo[1].predictedMax)
-    const vol = (s: (typeof hi)[number]) => s.sets.reduce((sum, x) => sum + x.target, 0)
-    expect(vol(hi[1])).toBeGreaterThan(vol(lo[1]))
+    expect(flooredMax(hi[1].predictedMax!)).toBe(flooredMax(lo[1].predictedMax!))
+    expect(sumTarget(hi[1].sets)).toBeGreaterThan(sumTarget(lo[1].sets))
   })
 
   it('anchors piecewise: a later test never rewrites the segment before it', () => {

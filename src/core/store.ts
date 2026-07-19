@@ -1,5 +1,6 @@
 import { signal } from '@preact/signals'
 import { todayISO } from './dates'
+import { derivePlanView } from './derive'
 import type {
   AppData,
   Exercise,
@@ -127,6 +128,14 @@ export const activePlanFor = (d: AppData, exerciseId: string): Plan | undefined 
 export function resultsForExercise(d: AppData, exerciseId: string): Result[] {
   const planIds = new Set(d.plans.filter((p) => p.exerciseId === exerciseId).map((p) => p.id))
   return d.results.filter((r) => planIds.has(r.planId))
+}
+
+/** How many exercises have a session due — drives the tab notification badge. */
+export function dueExerciseCount(d: AppData, today: string): number {
+  return d.exercises.filter((e) => {
+    const plan = activePlanFor(d, e.id)
+    return plan && derivePlanView(plan, resultsForExercise(d, e.id), today).due !== null
+  }).length
 }
 
 function archive(p: Plan): void {

@@ -1,8 +1,7 @@
 import { CircleQuestionMark, Settings as SettingsIcon, X } from 'lucide-preact'
 import { useEffect, useState } from 'preact/hooks'
 import { todayISO } from '../core/dates'
-import { derivePlanView } from '../core/derive'
-import { activePlanFor, db, resultsForExercise, sortedExercises } from '../core/store'
+import { db, dueExerciseCount, sortedExercises } from '../core/store'
 import { ExerciseTab } from './ExerciseTab'
 import { Help } from './Help'
 import { Settings } from './Settings'
@@ -43,11 +42,8 @@ export function App() {
   const exercise = exercises.find((e) => e.id === activeTab)
 
   // Tab/app-icon notification: how many exercises have a session due today.
-  const dueCount = exercises.filter((e) => {
-    const plan = activePlanFor(data, e.id)
-    return plan && derivePlanView(plan, resultsForExercise(data, e.id), today).due !== null
-  }).length
-  useEffect(() => updateTabBadge(dueCount), [dueCount])
+  // Effect deps keep the derivation off pure UI re-renders (tab switches etc.).
+  useEffect(() => updateTabBadge(dueExerciseCount(data, today)), [data, today])
 
   // Settings and Help are not tabs: they live behind the fixed buttons
   // top-right, which toggle back to the exercise that was open.
