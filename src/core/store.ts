@@ -1,6 +1,6 @@
 import { signal } from '@preact/signals'
 import { todayISO } from './dates'
-import { derivePlanView } from './derive'
+import { derivePlanView, fitProgress } from './derive'
 import type {
   AppData,
   Exercise,
@@ -209,6 +209,25 @@ export function clearOverride(planId: string, sessionIndex: number): void {
 
 // ---- logging ----
 
+/** Writes the immutable Result, folds test results into calibrations, and
+ * clears any per-set progress the session accumulated during the day. */
+function commitResult(
+  d: AppData,
+  planId: string,
+  sessionIndex: number,
+  sessionType: SessionType,
+  sets: ResultSet[],
+  date: string,
+): void {
+  d.results.push({ id: uid(), planId, sessionIndex, date, sessionType, sets })
+  const p = d.plans.find((x) => x.id === planId)
+  if (!p) return
+  // A test's single-set actual becomes the calibration point that bends
+  // the rest of the curve.
+  if (sessionType === 'test') p.calibrations.push({ sessionIndex, actual: sets[0]?.actual ?? 0 })
+  if (p.progress?.sessionIndex === sessionIndex) delete p.progress
+}
+
 export function logSession(
   planId: string,
   sessionIndex: number,
@@ -216,14 +235,52 @@ export function logSession(
   sets: ResultSet[],
   date: string = todayISO(),
 ): void {
+  update((d) => commitResult(d, planId, sessionIndex, sessionType, sets, date))
+}
+
+/** Checks off a single set of the due session — sets can land one at a time
+ * through the day. When the last one lands, the session finalizes into a
+ * Result exactly as a one-tap log would. */
+export function logSet(
+  planId: string,
+  sessionIndex: number,
+  sessionType: SessionType,
+  sets: SetTemplate[],
+  setIndex: number,
+  actual: number,
+  date: string = todayISO(),
+): void {
   update((d) => {
-    d.results.push({ id: uid(), planId, sessionIndex, date, sessionType, sets })
-    if (sessionType === 'test') {
-      const p = d.plans.find((x) => x.id === planId)
-      // A test's single-set actual becomes the calibration point that bends
-      // the rest of the curve.
-      if (p) p.calibrations.push({ sessionIndex, actual: sets[0]?.actual ?? 0 })
+    const p = d.plans.find((x) => x.id === planId)
+    if (!p) return
+    const actuals = fitProgress(
+      p.progress?.sessionIndex === sessionIndex ? p.progress.actuals : [],
+      sets.length,
+    )
+    actuals[setIndex] = actual
+    if (actuals.every((a) => a != null)) {
+      commitResult(
+        d,
+        planId,
+        sessionIndex,
+        sessionType,
+        sets.map((s, i) => ({ target: s.target, isMinimum: s.isMinimum, actual: actuals[i] as number })),
+        date,
+      )
+    } else {
+      p.progress = { sessionIndex, actuals }
     }
+  })
+}
+
+/** Un-checks a set (mistap insurance). Clearing the last one drops the
+ * progress record entirely. */
+export function undoSet(planId: string, sessionIndex: number, setIndex: number): void {
+  update((d) => {
+    const p = d.plans.find((x) => x.id === planId)
+    if (!p || p.progress?.sessionIndex !== sessionIndex) return
+    p.progress.actuals[setIndex] = null
+    if (p.progress.actuals.every((a) => a == null)) delete p.progress
   })
 }
 

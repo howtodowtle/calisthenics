@@ -218,9 +218,47 @@ label {
   flex: 1;
   min-width: 64px;
   background: var(--muted);
+  border: 1px solid transparent;
   border-radius: calc(var(--radius) - 2px);
   padding: 12px 8px 10px;
   text-align: center;
+}
+
+/* Today-card chips are buttons: tap to check a set off, tap again to undo. */
+button.set-chip {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) ease,
+    border-color var(--dur-fast) ease,
+    transform var(--dur-fast) ease;
+}
+
+button.set-chip:active {
+  transform: scale(0.96);
+}
+
+button.set-chip:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+/* While a count is being entered, the other chips step back. */
+button.set-chip:disabled {
+  cursor: default;
+  opacity: 0.55;
+  transform: none;
+}
+
+.set-chip.done {
+  background: color-mix(in oklab, var(--primary) 11%, var(--card));
+  border-color: color-mix(in oklab, var(--primary) 40%, transparent);
+}
+
+.set-chip.done .n,
+.set-chip.done .lbl {
+  color: var(--primary);
 }
 
 .set-chip .n {
@@ -231,12 +269,26 @@ label {
 }
 
 .set-chip .lbl {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   font-size: 0.62rem;
   font-weight: 600;
   color: var(--muted-foreground);
   text-transform: uppercase;
   letter-spacing: 0.07em;
   margin-top: 3px;
+}
+
+.set-chip .lbl svg {
+  flex: none;
+}
+
+/* Status line between the set grid and the log button. */
+.set-hint {
+  margin: -6px 2px 14px;
+  font-size: 0.8rem;
 }
 
 .set-chip input.input {

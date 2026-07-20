@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { derivePlanView } from './derive'
+import { derivePlanView, fitProgress } from './derive'
 import type { Plan, Result } from './types'
 
 const plan: Plan = {
@@ -61,11 +61,35 @@ describe('derivePlanView', () => {
     expect(s2.sets[0].target).toBe(99)
   })
 
+  it('exposes per-set progress on the in-progress session, sized to its sets', () => {
+    const p: Plan = { ...plan, progress: { sessionIndex: 1, actuals: [10, null] } }
+    const view = derivePlanView(p, [], '2026-07-20')
+    expect(view.due?.progress).toHaveLength(view.due!.sets.length)
+    expect(view.due?.progress?.[0]).toBe(10)
+    expect(view.due?.progress?.[1]).toBeNull()
+    // Progress belongs to exactly one session.
+    expect(view.sessions[1].progress).toBeUndefined()
+  })
+
+  it('drops progress from a session that already has a result', () => {
+    const p: Plan = { ...plan, progress: { sessionIndex: 1, actuals: [10] } }
+    const view = derivePlanView(p, [result(1, '2026-07-20')], '2026-07-21')
+    expect(view.sessions[0].progress).toBeUndefined()
+  })
+
   it('keeps completed sessions as facts when params change', () => {
     const done = [result(1, '2026-07-20'), result(2, '2026-07-22')]
     const changed: Plan = { ...plan, params: { ...plan.params, targetMax: 50 } }
     const view = derivePlanView(changed, done, '2026-07-23')
     expect(view.sessions[0].result).toBe(done[0])
     expect(view.completedCount).toBe(2)
+  })
+})
+
+describe('fitProgress', () => {
+  it('pads short progress with nulls and trims long progress', () => {
+    expect(fitProgress([7, null], 4)).toEqual([7, null, null, null])
+    expect(fitProgress([1, 2, 3, 4], 2)).toEqual([1, 2])
+    expect(fitProgress([], 3)).toEqual([null, null, null])
   })
 })

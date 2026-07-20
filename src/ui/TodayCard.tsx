@@ -1,14 +1,25 @@
+import { Check } from 'lucide-preact'
 import { useState } from 'preact/hooks'
 import type { SessionView } from '../core/derive'
-import { logSession } from '../core/store'
+import { logSession, logSet, undoSet } from '../core/store'
 import type { Exercise, ResultSet } from '../core/types'
 import { formatDate, SessionBadges, unitSuffix } from './format'
 
 /**
- * One-tap logging: Done logs every set at target. Sets that need a real
- * number (max tests, minimum "all you've got" sets) open a small prompt
- * first; "Adjust" opens the prompt for every set.
+ * Per-set logging: tap a set the moment you've done it — one in the morning,
+ * two at lunch — and the card keeps score until the last one completes the
+ * session. Tapping a checked set undoes it. Sets that need a real number
+ * (max tests, minimum "all you've got" sets) ask for it on tap. The button
+ * below logs everything remaining in one go; "Adjust" opens every set for
+ * exact numbers.
  */
+type Mode =
+  | { kind: 'view' }
+  /** One tapped set (min/test) waiting for its actual count. */
+  | { kind: 'entry'; set: number }
+  /** Bulk inputs: the remaining sets that need a number, or all sets. */
+  | { kind: 'edit'; scope: 'required' | 'all' }
+
 export function TodayCard({
   session,
   planId,
@@ -20,27 +31,86 @@ export function TodayCard({
   exercise: Exercise
   today: string
 }) {
-  const [editing, setEditing] = useState<'none' | 'required' | 'all'>('none')
+  const [mode, setMode] = useState<Mode>({ kind: 'view' })
   const [values, setValues] = useState<number[]>(() => session.sets.map((s) => s.target))
 
-  const sfx = unitSuffix(exercise.unit)
-  const needsInput = (i: number) =>
-    editing === 'all' || (editing === 'required' && (session.sets[i].isMinimum || session.type === 'test'))
-  const hasRequired = session.type === 'test' || session.sets.some((s) => s.isMinimum)
+  const progress = session.progress ?? session.sets.map(() => null)
+  const doneCount = progress.filter((a) => a != null).length
+  const remaining = session.sets.length - doneCount
+  const isTest = session.type === 'test'
 
-  const save = (vals: number[]) => {
+  const sfx = unitSuffix(exercise.unit)
+  /** Sets whose actual can't be assumed: max tests and minimum sets. */
+  const needsCount = (i: number) => isTest || session.sets[i].isMinimum
+  const showsInput = (i: number) =>
+    (mode.kind === 'entry' && mode.set === i) ||
+    (mode.kind === 'edit' && (mode.scope === 'all' || (progress[i] == null && needsCount(i))))
+
+  /** Mode transitions re-seed the inputs: logged actual where a set is done,
+   * planned target otherwise. */
+  const enter = (next: Mode) => {
+    setValues(session.sets.map((s, i) => progress[i] ?? s.target))
+    setMode(next)
+  }
+
+  const tapSet = (i: number) => {
+    if (progress[i] != null) undoSet(planId, session.index, i)
+    else if (needsCount(i)) enter({ kind: 'entry', set: i })
+    else logSet(planId, session.index, session.type, session.sets, i, session.sets[i].target, today)
+  }
+
+  const saveSession = (actuals: number[]) => {
     const sets: ResultSet[] = session.sets.map((s, i) => ({
       target: s.target,
       isMinimum: s.isMinimum,
-      actual: vals[i],
+      actual: actuals[i],
     }))
     logSession(planId, session.index, session.type, sets, today)
   }
 
-  const onDone = () => {
-    if (editing === 'none' && hasRequired) setEditing('required')
-    else save(values)
+  const onPrimary = () => {
+    if (mode.kind === 'entry') {
+      logSet(planId, session.index, session.type, session.sets, mode.set, values[mode.set], today)
+      setMode({ kind: 'view' })
+    } else if (mode.kind === 'edit') {
+      if (mode.scope === 'all') saveSession(values)
+      else saveSession(session.sets.map((s, i) => progress[i] ?? (needsCount(i) ? values[i] : s.target)))
+    } else if (session.sets.some((_, i) => progress[i] == null && needsCount(i))) {
+      enter({ kind: 'edit', scope: 'required' })
+    } else {
+      saveSession(session.sets.map((s, i) => progress[i] ?? s.target))
+    }
   }
+
+  const primaryLabel =
+    mode.kind === 'entry'
+      ? 'Log set'
+      : mode.kind === 'edit'
+        ? 'Save'
+        : doneCount === 0
+          ? isTest
+            ? 'Enter result'
+            : 'Log all sets'
+          : remaining === 0
+            ? 'Log session'
+            : remaining === 1
+              ? 'Log last set'
+              : `Log remaining ${remaining} sets`
+
+  const hint =
+    mode.kind === 'entry'
+      ? isTest
+        ? 'How many did you get?'
+        : `At least ${session.sets[mode.set].target}${sfx} — how many did you get?`
+      : mode.kind === 'edit'
+        ? isTest
+          ? 'How many did you get?'
+          : 'Enter what you actually did.'
+        : isTest
+          ? null
+          : doneCount === 0
+            ? 'Tap each set as you do it — or log them all at once below.'
+            : `${doneCount} of ${session.sets.length} sets done. Tap a set to undo.`
 
   const overdue = session.date < today
 
@@ -56,51 +126,74 @@ export function TodayCard({
         </span>
         <SessionBadges type={session.type} overridden={session.overridden} />
       </div>
-      {session.type === 'test' ? (
+      {isTest ? (
         <p class="dim">Single set — as many as you can. Result recalibrates the rest of the plan.</p>
       ) : null}
       <div class="set-grid">
-        {session.sets.map((s, i) => (
-          <div class="set-chip" key={i}>
-            {needsInput(i) ? (
+        {session.sets.map((s, i) => {
+          const done = progress[i] != null
+          const label = s.isMinimum ? 'min' : isTest ? 'max' : `set ${i + 1}`
+          return showsInput(i) ? (
+            <div class="set-chip" key={i}>
               <input
                 class="input"
                 type="number"
                 min={0}
+                inputMode="numeric"
                 value={values[i]}
+                autoFocus={mode.kind === 'entry'}
+                onKeyDown={(e) => e.key === 'Enter' && onPrimary()}
                 onInput={(e) => {
                   const next = [...values]
                   next[i] = Number((e.target as HTMLInputElement).value)
                   setValues(next)
                 }}
               />
-            ) : (
+              <div class="lbl">{label}</div>
+            </div>
+          ) : (
+            <button
+              key={i}
+              type="button"
+              class={done ? 'set-chip done' : 'set-chip'}
+              disabled={mode.kind !== 'view'}
+              aria-pressed={done}
+              onClick={() => tapSet(i)}
+            >
               <div class="n">
-                {s.target}
+                {done ? progress[i] : s.target}
                 {sfx}
-                {s.isMinimum ? '+' : ''}
+                {!done && s.isMinimum ? '+' : ''}
               </div>
-            )}
-            <div class="lbl">{s.isMinimum ? 'min' : `set ${i + 1}`}</div>
-          </div>
-        ))}
+              <div class="lbl">
+                {done && <Check size={11} strokeWidth={3} aria-hidden />}
+                {label}
+              </div>
+            </button>
+          )
+        })}
       </div>
-      {editing !== 'none' && (
-        <p class="dim">
-          {session.type === 'test' ? 'How many did you get?' : 'Enter what you actually did.'}
-        </p>
-      )}
-      <button class="btn block" onClick={onDone}>
-        {editing === 'none' ? 'Done' : 'Save'}
+      {hint && <p class="dim set-hint">{hint}</p>}
+      <button class="btn block" onClick={onPrimary}>
+        {primaryLabel}
       </button>
-      {editing === 'none' && (
+      {mode.kind === 'view' ? (
         <button
           class="btn block"
           data-variant="ghost"
           style={{ marginTop: 6 }}
-          onClick={() => setEditing('all')}
+          onClick={() => enter({ kind: 'edit', scope: 'all' })}
         >
           Adjust {exercise.unit === 'seconds' ? 'times' : 'reps'}
+        </button>
+      ) : (
+        <button
+          class="btn block"
+          data-variant="ghost"
+          style={{ marginTop: 6 }}
+          onClick={() => setMode({ kind: 'view' })}
+        >
+          Cancel
         </button>
       )}
       </section>

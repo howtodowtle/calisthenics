@@ -42,6 +42,17 @@ export interface SessionTemplate {
   predictedMax?: number
 }
 
+/**
+ * Per-set check-offs for the one session currently in progress — sets can be
+ * spread across the day (one in the morning, two at lunch, …). Cleared the
+ * moment the last set lands and the session becomes an immutable Result.
+ */
+export interface SessionProgress {
+  sessionIndex: number
+  /** Actual per set, aligned with the session's sets; null = not done yet. */
+  actuals: (number | null)[]
+}
+
 export interface Plan {
   id: string
   exerciseId: string
@@ -58,6 +69,8 @@ export interface Plan {
   calibrations: CalibrationPoint[]
   /** Manual per-day edits, keyed by session index. Survive re-derivation. */
   overrides: Record<number, { sets: SetTemplate[] }>
+  /** Sets checked off so far in the due session, at most one at a time. */
+  progress?: SessionProgress
 }
 
 export interface ResultSet {

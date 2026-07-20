@@ -17,9 +17,12 @@ export function Help() {
 
       <h2>Day to day</h2>
       <p>
-        Do the sets on the Today card, tap <strong>Done</strong>. Sets marked{' '}
-        <strong>min</strong> and test sessions ask what you actually got — test results
-        recalibrate the rest of the plan. Missed a day? The schedule shifts forward.
+        Your session lives on the Today card. Tap each set as you do it — one in the morning,
+        the rest whenever — or hit <strong>Log all sets</strong> to check the whole session off
+        at once. Tapping a checked set undoes it; the session completes when the last set is
+        logged. Sets marked <strong>min</strong> and test sessions ask what you actually got —
+        test results recalibrate the rest of the plan. Missed a day? The schedule shifts
+        forward.
       </p>
 
       <h2>Make it yours</h2>

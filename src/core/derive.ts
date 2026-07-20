@@ -20,6 +20,17 @@ export interface SessionView {
   status: 'done' | 'due' | 'upcoming'
   /** From the generator, when its algorithm models one. */
   predictedMax?: number
+  /** Per-set actuals checked off so far — only on the in-progress session. */
+  progress?: (number | null)[]
+}
+
+/** Progress actuals resized to the session's current set count — an override
+ * that adds or removes sets mid-day must not orphan or misalign check-offs. */
+export function fitProgress(
+  actuals: readonly (number | null)[],
+  count: number,
+): (number | null)[] {
+  return Array.from({ length: count }, (_, i) => actuals[i] ?? null)
 }
 
 export interface PlanView {
@@ -62,16 +73,21 @@ export function derivePlanView(plan: Plan, results: Result[], today: string): Pl
       : i === firstIncomplete && dates[i] <= today
         ? 'due'
         : 'upcoming'
+    const sets = override ? override.sets : t.sets
     return {
       index: t.index,
       type: t.type,
-      sets: override ? override.sets : t.sets,
+      sets,
       overridden: Boolean(override),
       date: result ? result.date : dates[i],
       week: weekOf(i, perWeek) + 1,
       result,
       status,
       predictedMax: t.predictedMax,
+      progress:
+        !result && plan.progress?.sessionIndex === t.index
+          ? fitProgress(plan.progress.actuals, sets.length)
+          : undefined,
     }
   })
 
