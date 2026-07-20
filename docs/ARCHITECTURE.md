@@ -37,6 +37,7 @@ Concrete consequences:
 | You do | What is stored | What happens on next render |
 |---|---|---|
 | Log a normal session | one `Result` | session shows as done (from the Result), rest re-derives |
+| Check off a single set | `plan.progress` (per-set actuals) | the Today card shows it done; the last set converts progress into a `Result` and clears it |
 | Log a max test | a `Result` + a `CalibrationPoint` | future targets bend toward your real max |
 | Edit a future day's sets | an override on the plan | that day shows your numbers, survives everything below |
 | Edit plan params mid-plan | new `params` | future re-derives from new params; past untouched |
@@ -50,6 +51,9 @@ Plan              exerciseId + generatorId + params + startDate
                   + status ('active' | 'archived')
                   + calibrations: [{ sessionIndex, actual }]
                   + overrides: { [sessionIndex]: { sets } }
+                  + progress?: { sessionIndex, actuals: (number|null)[] }
+                    — per-set check-offs of the due session; becomes a
+                    Result (and is cleared) when the last set is logged
 Result            immutable completion snapshot:
                   planId + sessionIndex + date + sessionType
                   + sets: [{ target, isMinimum, actual }]
@@ -81,7 +85,7 @@ store.ts  ──(AppData signal)──►  derive.ts  ──(PlanView)──► 
 
 | Module | Responsibility |
 |---|---|
-| `store.ts` | One `@preact/signals` signal over the whole `AppData` blob; every mutation goes through `update()` which clones, mutates, persists to localStorage. All mutations live here (`createPlan`, `logSession`, `setOverride`, …) — UI components never touch storage directly. |
+| `store.ts` | One `@preact/signals` signal over the whole `AppData` blob; every mutation goes through `update()` which clones, mutates, persists to localStorage. All mutations live here (`createPlan`, `completeSession`, `logSet`, `setOverride`, …) — UI components never touch storage directly. |
 | `derive.ts` | `derivePlanView(plan, results, today)` — merges generator output, overrides, results and shifted dates into `SessionView[]` plus `due` / `next` / `endDate`. The single source for "what does this plan look like right now". |
 | `schedule.ts` | `baseDates` spreads sessions evenly per week from the start date (3/wk → offsets 0, 2, 4). `shiftedDates` slides the remaining schedule forward when the first incomplete session is overdue. The single place a smarter rescheduler would plug in. |
 | `generators/` | The algorithm registry. See below. |
@@ -184,7 +188,7 @@ update re-renders everything; at this data size that's the simplest correct mode
 |---|---|
 | `App.tsx` | Tab bar (one tab per exercise; Settings sits behind a fixed gear button top-right, not in the bar), `useToday()` (re-renders on foregrounding / every minute so "today" survives midnight) |
 | `ExerciseTab.tsx` | Composition: today card → stats → chart → schedule → history |
-| `TodayCard.tsx` | One-tap Done. Max tests and minimum sets prompt for actual numbers; "Adjust" opens all sets for editing |
+| `TodayCard.tsx` | Per-set logging: tap a set when you've done it (tap again to undo); the last set completes the session. Max tests and minimum sets prompt for actual numbers; one button logs everything remaining; "Adjust" opens all sets for editing |
 | `ScheduleList.tsx` | Upcoming sessions; tapping a row opens an inline editor that stores an override |
 | `HistoryList.tsx` | Past Results, newest first |
 | `Chart.tsx` | SVG progress chart — planned volume line, done dots, test diamonds, tap/drag crosshair. Colors are `--viz-*` tokens validated for both themes |
