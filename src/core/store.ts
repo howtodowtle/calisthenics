@@ -226,7 +226,7 @@ function commitResult(
   sets: ResultSet[],
   date: string,
 ): void {
-  d.results.push({ id: uid(), planId: p.id, sessionIndex, date, sessionType, sets })
+  d.results.push({ id: uid(), planId: p.id, sessionIndex, date, sessionType, sets, completedAt: nowISO() })
   // A test's single-set actual becomes the calibration point that bends
   // the rest of the curve.
   if (sessionType === 'test') p.calibrations.push({ sessionIndex, actual: sets[0]?.actual ?? 0 })
@@ -292,6 +292,24 @@ export function undoSet(planId: string, sessionIndex: number, setIndex: number):
     if (!p || p.progress?.sessionIndex !== sessionIndex) return
     p.progress.actuals[setIndex] = null
     if (p.progress.actuals.every((a) => a == null)) delete p.progress
+  })
+}
+
+/** Corrects the actual counts of an already-logged session, within its edit
+ * window (enforced by the UI via `isResultEditable`). Only the actuals move —
+ * targets, date and set count are facts of the day and stay put. A max test's
+ * calibration point follows the corrected number so the curve stays honest. */
+export function editResult(resultId: string, actuals: number[]): void {
+  update((d) => {
+    const r = d.results.find((x) => x.id === resultId)
+    if (!r) return
+    r.sets = r.sets.map((s, i) => ({ ...s, actual: actuals[i] ?? s.actual }))
+    if (r.sessionType === 'test') {
+      const cal = d.plans
+        .find((x) => x.id === r.planId)
+        ?.calibrations.find((c) => c.sessionIndex === r.sessionIndex)
+      if (cal) cal.actual = r.sets[0]?.actual ?? cal.actual
+    }
   })
 }
 

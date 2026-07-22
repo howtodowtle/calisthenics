@@ -1,7 +1,7 @@
 import { Check } from 'lucide-preact'
 import { useState } from 'preact/hooks'
 import { fitProgress, type SessionView } from '../core/derive'
-import { completeSession, logSet, undoSet } from '../core/store'
+import { completeSession, logSet, setOverride, undoSet } from '../core/store'
 import type { Exercise } from '../core/types'
 import { formatDate, SessionBadges, unitSuffix } from './format'
 
@@ -49,11 +49,13 @@ export function TodayCard({
     (mode.kind === 'entry' && mode.set === i) ||
     (mode.kind === 'edit' && (mode.scope === 'all' || needsEntry(i)))
 
-  /** Mode transitions seed the inputs: logged actual where a set is done,
-   * planned target otherwise — so saving unedited inputs logs exactly what
-   * the chips showed. */
+  /** Mode transitions seed the inputs. "Adjust reps" (edit-all) edits the
+   * planned targets, so it seeds from targets. Logging modes seed from the
+   * logged actual where a set is done, planned target otherwise — so saving
+   * unedited inputs logs exactly what the chips showed. */
   const enter = (next: Mode) => {
-    setValues(session.sets.map((s, i) => progress[i] ?? s.target))
+    const editingTargets = next.kind === 'edit' && next.scope === 'all'
+    setValues(session.sets.map((s, i) => (editingTargets ? s.target : progress[i] ?? s.target)))
     setMode(next)
   }
 
@@ -66,6 +68,14 @@ export function TodayCard({
   const onPrimary = () => {
     if (mode.kind === 'entry') {
       logSet(planId, session.index, mode.set, values[mode.set], today)
+      setMode({ kind: 'view' })
+    } else if (mode.kind === 'edit' && mode.scope === 'all') {
+      // "Adjust reps": store an override of the targets — no set gets logged.
+      setOverride(
+        planId,
+        session.index,
+        session.sets.map((s, i) => ({ target: Math.max(1, values[i] || 1), isMinimum: s.isMinimum })),
+      )
       setMode({ kind: 'view' })
     } else if (mode.kind === 'edit') {
       completeSession(planId, session.index, values, today)
@@ -88,6 +98,8 @@ export function TodayCard({
 
   const hint = (): string | null => {
     if (mode.kind !== 'view') {
+      if (mode.kind === 'edit' && mode.scope === 'all')
+        return 'Adjust the target numbers — saved without logging the session.'
       if (isTest) return 'How many did you get?'
       return mode.kind === 'entry'
         ? `At least ${session.sets[mode.set].target}${sfx} — how many did you get?`

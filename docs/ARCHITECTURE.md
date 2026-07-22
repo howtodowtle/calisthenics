@@ -11,9 +11,14 @@ generator plus its parameters.
 
 Everything else follows from this.
 
-- **Past = facts.** Completing a session writes an immutable `Result` snapshot —
-  the targets as they were that day plus what you actually did. History, stats and
-  the chart read only Results. Nothing ever regenerates or edits the past.
+- **Past = facts.** Completing a session writes a `Result` snapshot — the targets
+  as they were that day plus what you actually did. History, stats and the chart
+  read only Results. Nothing ever regenerates the past. The one edit allowed: for
+  24h after finishing (`isResultEditable`, keyed off `Result.completedAt`) you can
+  correct the actual counts you logged — a fat-finger fix on the day. Only the
+  actuals move; targets, date and set count stay fixed, and a max test's
+  calibration point follows the corrected number. After the window closes the
+  Result is immutable.
 - **Future = pure function.** The schedule you see for incomplete sessions is
   recomputed on every render:
 
@@ -54,8 +59,8 @@ Plan              exerciseId + generatorId + params + startDate
                   + progress?: { sessionIndex, actuals: (number|null)[] }
                     — per-set check-offs of the due session; becomes a
                     Result (and is cleared) when the last set is logged
-Result            immutable completion snapshot:
-                  planId + sessionIndex + date + sessionType
+Result            completion snapshot (actuals editable for 24h, then frozen):
+                  planId + sessionIndex + date + sessionType + completedAt
                   + sets: [{ target, isMinimum, actual }]
 AppData           { version, exercises[], plans[], results[] } — one localStorage key
 ```
@@ -188,9 +193,9 @@ update re-renders everything; at this data size that's the simplest correct mode
 |---|---|
 | `App.tsx` | Tab bar (one tab per exercise; Settings sits behind a fixed gear button top-right, not in the bar), `useToday()` (re-renders on foregrounding / every minute so "today" survives midnight) |
 | `ExerciseTab.tsx` | Composition: today card → stats → chart → schedule → history |
-| `TodayCard.tsx` | Per-set logging: tap a set when you've done it (tap again to undo); the last set completes the session. Max tests and minimum sets prompt for actual numbers; one button logs everything remaining; "Adjust" opens all sets for editing |
+| `TodayCard.tsx` | Per-set logging: tap a set when you've done it (tap again to undo); the last set completes the session. Max tests and minimum sets prompt for actual numbers; one button logs everything remaining; "Adjust reps" edits today's targets as an override *without* logging the session |
 | `ScheduleList.tsx` | Upcoming sessions; tapping a row opens an inline editor that stores an override |
-| `HistoryList.tsx` | Past Results, newest first |
+| `HistoryList.tsx` | Past Results, newest first; rows finished within 24h are tappable to correct the logged actuals |
 | `Chart.tsx` | SVG progress chart — planned volume line, done dots, test diamonds, tap/drag crosshair. Colors are `--viz-*` tokens validated for both themes |
 | `Settings.tsx` | Exercise CRUD, plan lifecycle (create / edit params / stop / delete), self-rendering param forms, JSON backup |
 

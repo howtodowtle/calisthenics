@@ -79,7 +79,11 @@ export interface ResultSet {
   actual: number
 }
 
-/** Immutable snapshot written when a session is completed. */
+/**
+ * Snapshot written when a session is completed. Immutable except for a short
+ * grace window after finishing (see `isResultEditable`): the actual counts can
+ * be corrected until 24h have passed, for fat-finger fixes on the day.
+ */
 export interface Result {
   id: string
   planId: string
@@ -87,6 +91,9 @@ export interface Result {
   date: string // yyyy-mm-dd
   sessionType: SessionType
   sets: ResultSet[]
+  /** When the session was logged (ISO date-time). Drives the 24h edit window.
+   * Optional: results logged before this field existed fall back to `date`. */
+  completedAt?: string
 }
 
 export interface AppData {

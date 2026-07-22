@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { derivePlanView, effectiveSession, fitProgress } from './derive'
+import { derivePlanView, effectiveSession, fitProgress, isResultEditable } from './derive'
 import type { Plan, Result } from './types'
 
 const plan: Plan = {
@@ -96,6 +96,29 @@ describe('effectiveSession', () => {
     }
     expect(effectiveSession(edited, 2)?.sets).toEqual([{ target: 99, isMinimum: false }])
     expect(effectiveSession(plan, 999)).toBeNull()
+  })
+})
+
+describe('isResultEditable', () => {
+  const at = (completedAt: string): Result => ({ ...result(1, '2026-07-20'), completedAt })
+  const t = (iso: string) => Date.parse(iso)
+
+  it('keeps a result editable within 24h of completion', () => {
+    const r = at('2026-07-20T09:00:00Z')
+    expect(isResultEditable(r, t('2026-07-20T10:00:00Z'), '2026-07-20')).toBe(true)
+    // 23h59m later — still inside the window, even on the next calendar day.
+    expect(isResultEditable(r, t('2026-07-21T08:59:00Z'), '2026-07-21')).toBe(true)
+  })
+
+  it('freezes a result once 24h have passed', () => {
+    const r = at('2026-07-20T09:00:00Z')
+    expect(isResultEditable(r, t('2026-07-21T09:00:01Z'), '2026-07-21')).toBe(false)
+  })
+
+  it('falls back to same-calendar-day for legacy results without completedAt', () => {
+    const legacy = result(1, '2026-07-20') // no completedAt
+    expect(isResultEditable(legacy, t('2026-07-20T23:59:00Z'), '2026-07-20')).toBe(true)
+    expect(isResultEditable(legacy, t('2026-07-21T00:01:00Z'), '2026-07-21')).toBe(false)
   })
 })
 

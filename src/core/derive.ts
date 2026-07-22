@@ -134,6 +134,20 @@ export function previewPlan(
   return { count: sessions.length, end: dates[dates.length - 1] }
 }
 
+/** How long after finishing a logged session its numbers stay editable. */
+export const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000
+
+/**
+ * Whether a completed session can still have its numbers corrected. New results
+ * carry a `completedAt` timestamp and stay editable for 24h after finishing.
+ * Legacy results (logged before the timestamp existed) fall back to "only while
+ * it's still that calendar day".
+ */
+export function isResultEditable(r: Result, nowMs: number, today: string): boolean {
+  if (r.completedAt) return nowMs - Date.parse(r.completedAt) < EDIT_WINDOW_MS
+  return r.date === today
+}
+
 /**
  * predictedMax per "planId:sessionIndex" key — lets history rows (which span
  * plans) look up the max a session was planned around.
