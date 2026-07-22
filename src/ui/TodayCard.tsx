@@ -3,7 +3,7 @@ import { useState } from 'preact/hooks'
 import { fitProgress, type SessionView } from '../core/derive'
 import { completeSession, logSet, setOverride, undoSet } from '../core/store'
 import type { Exercise } from '../core/types'
-import { formatDate, SessionBadges, unitSuffix } from './format'
+import { formatDate, SessionBadges, setLabel, unitSuffix } from './format'
 
 /**
  * Per-set logging: tap a set the moment you've done it — one in the morning,
@@ -39,6 +39,8 @@ export function TodayCard({
   const doneCount = progress.filter((a) => a != null).length
   const remaining = session.sets.length - doneCount
   const isTest = session.type === 'test'
+  /** "Adjust reps": editing today's targets, not logging what was done. */
+  const editingTargets = mode.kind === 'edit' && mode.scope === 'all'
 
   const sfx = unitSuffix(exercise.unit)
   /** Sets whose actual can't be assumed: max tests and minimum sets. */
@@ -69,7 +71,7 @@ export function TodayCard({
     if (mode.kind === 'entry') {
       logSet(planId, session.index, mode.set, values[mode.set], today)
       setMode({ kind: 'view' })
-    } else if (mode.kind === 'edit' && mode.scope === 'all') {
+    } else if (editingTargets) {
       // "Adjust reps": store an override of the targets — no set gets logged.
       setOverride(
         planId,
@@ -98,8 +100,7 @@ export function TodayCard({
 
   const hint = (): string | null => {
     if (mode.kind !== 'view') {
-      if (mode.kind === 'edit' && mode.scope === 'all')
-        return 'Adjust the target numbers — saved without logging the session.'
+      if (editingTargets) return 'Adjust the target numbers — saved without logging the session.'
       if (isTest) return 'How many did you get?'
       return mode.kind === 'entry'
         ? `At least ${session.sets[mode.set].target}${sfx} — how many did you get?`
@@ -131,7 +132,7 @@ export function TodayCard({
       <div class="set-grid">
         {session.sets.map((s, i) => {
           const done = progress[i] != null
-          const label = s.isMinimum ? 'min' : isTest ? 'max' : `set ${i + 1}`
+          const label = setLabel(s, i, isTest)
           return showsInput(i) ? (
             <div class="set-chip" key={i}>
               <input

@@ -36,6 +36,10 @@ export function actualsSummary(sets: ResultSet[], unit: Unit): string {
   return sets.map((s) => `${s.actual}${sfx}`).join(' · ')
 }
 
+/** Per-set chip label: "min" / "max" (test) / "set N". */
+export const setLabel = (set: { isMinimum: boolean }, i: number, isTest: boolean): string =>
+  set.isMinimum ? 'min' : isTest ? 'max' : `set ${i + 1}`
+
 /** The "max ~N" hint printed on rows and in the chart tooltip. Floors the
  * (float) predicted max — the displayed number never rounds up. */
 export const maxHint = (value: number, unit: Unit): string =>

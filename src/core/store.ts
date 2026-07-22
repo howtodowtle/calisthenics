@@ -1,6 +1,6 @@
 import { signal } from '@preact/signals'
 import { todayISO } from './dates'
-import { derivePlanView, effectiveSession, fitProgress } from './derive'
+import { derivePlanView, effectiveSession, fitProgress, isResultEditable } from './derive'
 import type {
   AppData,
   Exercise,
@@ -216,6 +216,10 @@ const toResultSets = (sets: SetTemplate[], actuals: number[]): ResultSet[] =>
 const progressOf = (p: Plan, sessionIndex: number, count: number): (number | null)[] =>
   fitProgress(p.progress?.sessionIndex === sessionIndex ? p.progress.actuals : [], count)
 
+/** A max test's calibration point is its single set's actual. One owner for
+ * this rule so committing and editing a test can never disagree. */
+const testCalibrationActual = (sets: ResultSet[]): number => sets[0]?.actual ?? 0
+
 /** Writes the immutable Result, folds test results into calibrations, and
  * clears any per-set progress the session accumulated during the day. */
 function commitResult(
@@ -229,7 +233,7 @@ function commitResult(
   d.results.push({ id: uid(), planId: p.id, sessionIndex, date, sessionType, sets, completedAt: nowISO() })
   // A test's single-set actual becomes the calibration point that bends
   // the rest of the curve.
-  if (sessionType === 'test') p.calibrations.push({ sessionIndex, actual: sets[0]?.actual ?? 0 })
+  if (sessionType === 'test') p.calibrations.push({ sessionIndex, actual: testCalibrationActual(sets) })
   if (p.progress?.sessionIndex === sessionIndex) delete p.progress
 }
 
@@ -295,20 +299,21 @@ export function undoSet(planId: string, sessionIndex: number, setIndex: number):
   })
 }
 
-/** Corrects the actual counts of an already-logged session, within its edit
- * window (enforced by the UI via `isResultEditable`). Only the actuals move —
- * targets, date and set count are facts of the day and stay put. A max test's
- * calibration point follows the corrected number so the curve stays honest. */
+/** Corrects the actual counts of an already-logged session. The store guards
+ * the 24h edit window itself (`isResultEditable`) — a frozen Result never
+ * changes, whatever the caller. Only the actuals move; targets, date and set
+ * count are facts of the day and stay put. A max test's calibration point
+ * follows the corrected number so the curve stays honest. */
 export function editResult(resultId: string, actuals: number[]): void {
   update((d) => {
     const r = d.results.find((x) => x.id === resultId)
-    if (!r) return
+    if (!r || !isResultEditable(r, Date.now(), todayISO())) return
     r.sets = r.sets.map((s, i) => ({ ...s, actual: actuals[i] ?? s.actual }))
     if (r.sessionType === 'test') {
       const cal = d.plans
         .find((x) => x.id === r.planId)
         ?.calibrations.find((c) => c.sessionIndex === r.sessionIndex)
-      if (cal) cal.actual = r.sets[0]?.actual ?? cal.actual
+      if (cal) cal.actual = testCalibrationActual(r.sets)
     }
   })
 }

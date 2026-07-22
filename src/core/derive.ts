@@ -135,7 +135,7 @@ export function previewPlan(
 }
 
 /** How long after finishing a logged session its numbers stay editable. */
-export const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000
+const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000
 
 /**
  * Whether a completed session can still have its numbers corrected. New results

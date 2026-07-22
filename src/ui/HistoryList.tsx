@@ -2,7 +2,8 @@ import { useState } from 'preact/hooks'
 import { isResultEditable } from '../core/derive'
 import { editResult } from '../core/store'
 import type { Result, Unit } from '../core/types'
-import { actualsSummary, formatDate, maxHint, SessionBadges, stagger } from './format'
+import { actualsSummary, formatDate, maxHint, SessionBadges, setLabel, stagger } from './format'
+import { SetGridEditor } from './SetGridEditor'
 
 /** Past sessions, newest first — across all plans of the exercise. Sessions
  * finished within the last 24h stay editable (fat-finger fixes on the day);
@@ -43,7 +44,7 @@ export function HistoryList({
                 key={r.id}
                 class="session-row done"
                 style={stagger(i)}
-                {...(editable ? { onClick: () => setOpen(r.id) } : {})}
+                onClick={editable ? () => setOpen(r.id) : undefined}
               >
                 <span class="date">{formatDate(r.date, today)}</span>
                 <span class="sets-line" style={{ flex: 1 }}>
@@ -63,53 +64,16 @@ export function HistoryList({
 
 /** Inline editor for a just-finished session: correct the actual counts only.
  * Targets, date and set count are facts of the day and can't change here. */
-function ResultEditor({
-  result,
-  onClose,
-}: {
-  result: Result
-  onClose: () => void
-}) {
-  const [values, setValues] = useState<number[]>(() => result.sets.map((s) => s.actual))
+function ResultEditor({ result, onClose }: { result: Result; onClose: () => void }) {
   const isTest = result.sessionType === 'test'
-
-  const save = () => {
-    editResult(result.id, values.map((v) => Math.max(0, v || 0)))
-    onClose()
-  }
-
   return (
-    <div class="session-editor">
-      <div class="dim" style={{ marginBottom: 6 }}>
-        {formatDate(result.date, result.date)} · fix what you logged
-      </div>
-      <div class="set-grid" style={{ margin: '6px 0 10px' }}>
-        {result.sets.map((s, i) => (
-          <div class="set-chip" key={i}>
-            <input
-              class="input"
-              type="number"
-              min={0}
-              inputMode="numeric"
-              value={values[i]}
-              onInput={(e) => {
-                const next = [...values]
-                next[i] = Number((e.target as HTMLInputElement).value)
-                setValues(next)
-              }}
-            />
-            <div class="lbl">{s.isMinimum ? 'min' : isTest ? 'max' : `set ${i + 1}`}</div>
-          </div>
-        ))}
-      </div>
-      <div class="row" style={{ justifyContent: 'flex-start' }}>
-        <button class="btn" data-size="sm" onClick={save}>
-          Save
-        </button>
-        <button class="btn" data-variant="ghost" data-size="sm" onClick={onClose}>
-          Cancel
-        </button>
-      </div>
-    </div>
+    <SetGridEditor
+      header={`${formatDate(result.date, result.date)} · fix what you logged`}
+      labels={result.sets.map((s, i) => setLabel(s, i, isTest))}
+      initial={result.sets.map((s) => s.actual)}
+      min={0}
+      onSave={(values) => editResult(result.id, values)}
+      onClose={onClose}
+    />
   )
 }

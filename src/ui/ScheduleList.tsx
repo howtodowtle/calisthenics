@@ -2,7 +2,8 @@ import { useState } from 'preact/hooks'
 import type { SessionView } from '../core/derive'
 import { clearOverride, setOverride } from '../core/store'
 import type { Exercise } from '../core/types'
-import { formatDate, maxHint, SessionBadges, setsSummary, stagger } from './format'
+import { formatDate, maxHint, SessionBadges, setLabel, setsSummary, stagger } from './format'
+import { SetGridEditor } from './SetGridEditor'
 
 /**
  * Upcoming sessions. Tapping a row opens an inline editor; saving stores a
@@ -66,58 +67,35 @@ function SessionEditor({
   planId: string
   onClose: () => void
 }) {
-  const [values, setValues] = useState<number[]>(() => session.sets.map((s) => s.target))
-
-  const save = () => {
-    setOverride(
-      planId,
-      session.index,
-      session.sets.map((s, i) => ({ target: Math.max(1, values[i] || 1), isMinimum: s.isMinimum })),
-    )
-    onClose()
-  }
-
-  const revert = () => {
-    clearOverride(planId, session.index)
-    onClose()
-  }
-
   return (
-    <div class="session-editor">
-      <div class="dim" style={{ marginBottom: 6 }}>
-        Session {session.index} · edit targets
-      </div>
-      <div class="set-grid" style={{ margin: '6px 0 10px' }}>
-        {session.sets.map((s, i) => (
-          <div class="set-chip" key={i}>
-            <input
-              class="input"
-              type="number"
-              min={1}
-              value={values[i]}
-              onInput={(e) => {
-                const next = [...values]
-                next[i] = Number((e.target as HTMLInputElement).value)
-                setValues(next)
-              }}
-            />
-            <div class="lbl">{s.isMinimum ? 'min' : `set ${i + 1}`}</div>
-          </div>
-        ))}
-      </div>
-      <div class="row" style={{ justifyContent: 'flex-start' }}>
-        <button class="btn" data-size="sm" onClick={save}>
-          Save
-        </button>
-        <button class="btn" data-variant="ghost" data-size="sm" onClick={onClose}>
-          Cancel
-        </button>
-        {session.overridden && (
-          <button class="btn danger" data-variant="ghost" data-size="sm" onClick={revert}>
+    <SetGridEditor
+      header={`Session ${session.index} · edit targets`}
+      labels={session.sets.map((s, i) => setLabel(s, i, false))}
+      initial={session.sets.map((s) => s.target)}
+      min={1}
+      onSave={(values) =>
+        setOverride(
+          planId,
+          session.index,
+          session.sets.map((s, i) => ({ target: values[i], isMinimum: s.isMinimum })),
+        )
+      }
+      onClose={onClose}
+      extra={
+        session.overridden ? (
+          <button
+            class="btn danger"
+            data-variant="ghost"
+            data-size="sm"
+            onClick={() => {
+              clearOverride(planId, session.index)
+              onClose()
+            }}
+          >
             Revert to plan
           </button>
-        )}
-      </div>
-    </div>
+        ) : undefined
+      }
+    />
   )
 }
