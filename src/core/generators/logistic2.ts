@@ -27,11 +27,12 @@ import type {
  *   50%, so the steep phase lands in the first half and the back half is a
  *   long, realistic approach — a symmetric logistic instead claims the
  *   biggest jumps mid-plan, where there's no mechanism for them.
- * - Calibration **re-anchors**: after a test, the future is a fresh Gompertz
- *   from the test result to targetMax over the remaining sessions — no decay
- *   back to the old trajectory. Anchoring is piecewise per test, so sessions
- *   before a later test keep the curve they were generated from. A result at
- *   or above targetMax holds the curve flat at that result. The early-
+ * - Calibration **re-anchors** from the test day onward: the test's own day
+ *   snaps to the measured result, and the future is a fresh Gompertz from that
+ *   result to targetMax over the remaining sessions — no decay back to the old
+ *   trajectory. It never rewrites the past: sessions strictly before the test
+ *   keep the curve they were generated from (anchoring is piecewise per test).
+ *   A result at or above targetMax holds the curve flat at that result. The early-
  *   inflection shape composes well with re-anchoring: each segment pushes in
  *   the fresh weeks right after a test + recovery and eases as the next test
  *   approaches — a built-in mini-taper. (A symmetric curve would restart slow
@@ -86,12 +87,15 @@ function predictedMaxAt(
   totalSessions: number,
   calibrations: CalibrationPoint[],
 ): number {
-  // Anchor: the latest test strictly before session n. The test session itself
-  // is still governed by the previous anchor (its target was the prediction).
+  // Anchor: the latest test at or before session n. Re-anchoring reaches the
+  // present, not just the future — a test's own day snaps to the measured
+  // result (progress is 0 at the anchor, so the curve passes through it), so a
+  // 54 test never leaves that day predicting 60. Sessions strictly before the
+  // test keep the curve they were generated from; only today and forward move.
   let anchorSession = 1
   let anchorValue = startMax
   for (const c of calibrations) {
-    if (c.sessionIndex < n && c.sessionIndex >= anchorSession) {
+    if (c.sessionIndex <= n && c.sessionIndex >= anchorSession) {
       anchorSession = c.sessionIndex
       anchorValue = clamp(c.actual, 1, 500)
     }

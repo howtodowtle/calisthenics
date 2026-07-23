@@ -118,10 +118,12 @@ describe('logistic-v2 session volume', () => {
 describe('logistic-v2 calibration (re-anchor)', () => {
   const uncal = logisticV2.generate(P, [])
 
-  it('logging the opening max test re-anchors the whole curve', () => {
+  it('logging the opening max test re-anchors the whole curve, its own day included', () => {
     const cal = logisticV2.generate(P, [{ sessionIndex: 1, actual: 20 }])
-    // The test itself keeps its prediction; everything after rides the new curve.
-    expect(cal[0]).toEqual(uncal[0])
+    // The test day itself snaps to the measured result — a 20 there never keeps
+    // predicting the old 10 — and everything after rides the new curve.
+    expect(cal[0].predictedMax).toBe(20)
+    expect(cal[0].sets[0].target).toBe(20)
     expect(cal[1].predictedMax).toBeGreaterThanOrEqual(20)
     for (let i = 1; i < 40; i++) {
       expect(cal[i].predictedMax!).toBeGreaterThanOrEqual(uncal[i].predictedMax!)
@@ -129,9 +131,13 @@ describe('logistic-v2 calibration (re-anchor)', () => {
     expect(cal[39].predictedMax).toBe(100)
   })
 
-  it('leaves sessions up to and including the test untouched', () => {
+  it('leaves sessions strictly before the test untouched, adjusts the test day itself', () => {
     const cal = logisticV2.generate(P, [{ sessionIndex: 12, actual: 15 }])
-    for (let i = 0; i < 12; i++) expect(cal[i]).toEqual(uncal[i])
+    // Sessions 1..11 (indices 0..10) keep the curve they were generated from.
+    for (let i = 0; i < 11; i++) expect(cal[i]).toEqual(uncal[i])
+    // The test day (session 12, index 11) snaps down to the measured 15.
+    expect(cal[11].predictedMax).toBe(15)
+    expect(uncal[11].predictedMax!).toBeGreaterThan(15)
   })
 
   it('snaps the next session to the test result and still ends at targetMax', () => {
@@ -178,7 +184,10 @@ describe('logistic-v2 calibration (re-anchor)', () => {
       { sessionIndex: 12, actual: 15 },
       { sessionIndex: 21, actual: 30 },
     ])
-    for (let i = 0; i < 21; i++) expect(two[i]).toEqual(one[i])
+    // Sessions strictly before the second test (1..20, indices 0..19) are shared.
+    for (let i = 0; i < 20; i++) expect(two[i]).toEqual(one[i])
+    // The second test day (session 21, index 20) snaps to its own result.
+    expect(two[20].predictedMax).toBe(30)
     expect(two[21].predictedMax).toBeGreaterThanOrEqual(30)
     expect(two[21].predictedMax).toBeLessThanOrEqual(31)
   })

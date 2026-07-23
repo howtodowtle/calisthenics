@@ -170,10 +170,12 @@ and taper (×0.6) / recovery (×0.85) structure; what changed:
   Gompertz puts the inflection at ~35% of the span; a symmetric logistic would
   claim the biggest weekly jumps mid-plan, where there's no mechanism for them.
   (The generator id stays `logistic-v2` — ids are opaque and stable.)
-- **Calibration re-anchors**: after a test, the future is a fresh Gompertz from
-  the test result to `targetMax` over the remaining sessions — no decay back.
-  Anchoring is piecewise per test, so earlier segments keep the curve they were
-  generated from. A result at or above `targetMax` holds the curve flat there.
+- **Calibration re-anchors from the test day onward**: the test's own day snaps
+  to the measured result, and the future is a fresh Gompertz from that result to
+  `targetMax` over the remaining sessions — no decay back. It never rewrites the
+  past: sessions strictly before the test keep the curve they were generated
+  from (anchoring is piecewise per test). So a 54-rep test never leaves that day
+  still predicting 60. A result at or above `targetMax` holds the curve flat there.
   The early inflection composes well with this: each re-anchored segment pushes
   in the fresh weeks right after a test + recovery and eases as the next test
   approaches — a built-in mini-taper.
