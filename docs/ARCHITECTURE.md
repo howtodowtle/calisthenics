@@ -83,17 +83,25 @@ Everything in `core/` is pure TypeScript with no UI imports; all of it is
 unit-tested. Data flows in one direction:
 
 ```
-store.ts  ──(AppData signal)──►  derive.ts  ──(PlanView)──►  src/ui/*
-                                   │
-                    ┌──────────────┼────────────────┐
-              generators/     schedule.ts       results
-              (what to do)    (when to do it)   (what happened)
+store.ts  ──(AppData signal)──►  derive.ts  ──(PlanView)──────────►  src/ui/*
+   │                               │                                    ▲
+   │                 ┌─────────────┼───────────────┐                    │
+   │           generators/    schedule.ts       results                 │
+   │           (what to do)   (when to do it)   (what happened)         │
+   └────────────────────►  overview.ts  ──(OverviewDay[])───────────────┘
+                        (every exercise, per day)
 ```
+
+Note the layering: `derive.ts` is **plan-level** ("what does this plan look
+like right now"), `overview.ts` is **app-level** ("what does my week look
+like") and is built by regrouping `derive.ts` output — it owns no scheduling
+rules of its own.
 
 | Module | Responsibility |
 |---|---|
 | `store.ts` | One `@preact/signals` signal over the whole `AppData` blob; every mutation goes through `update()` which clones, mutates, persists to localStorage. All mutations live here (`createPlan`, `completeSession`, `logSet`, `setOverride`, …) — UI components never touch storage directly. |
 | `derive.ts` | `derivePlanView(plan, results, today)` — merges generator output, overrides, results and shifted dates into `SessionView[]` plus `due` / `next` / `endDate`. The single source for "what does this plan look like right now". |
+| `overview.ts` | `deriveOverview(data, today, days)` — the week ahead across *all* exercises with an active plan, as one `OverviewDay` per calendar day (rest days included, empty). Completed sessions drop out; an overdue session files under today. Only today is a fact: later days assume you stay on plan, because `shiftedDates` moves them when you don't. |
 | `schedule.ts` | `baseDates` spreads sessions evenly per week from the start date (3/wk → offsets 0, 2, 4). `shiftedDates` slides the remaining schedule forward when the first incomplete session is overdue. The single place a smarter rescheduler would plug in. |
 | `generators/` | The algorithm registry. See below. |
 | `stats.ts` | Streak (sessions ≤ 7 days apart, ending within 7 days of today) and lifetime totals, computed across active *and* archived plans of an exercise. |
@@ -204,7 +212,8 @@ update re-renders everything; at this data size that's the simplest correct mode
 
 | File | Screen area |
 |---|---|
-| `App.tsx` | Tab bar (one tab per exercise; Settings sits behind a fixed gear button top-right, not in the bar), `useToday()` (re-renders on foregrounding / every minute so "today" survives midnight) |
+| `App.tsx` | Tab bar (Overview first, then one tab per exercise; Settings and Help sit behind fixed buttons top-right, not in the bar), `useToday()` (re-renders on foregrounding / every minute so "today" survives midnight). The open tab persists under `ui.tab.v2`; the overview is the default landing tab |
+| `Overview.tsx` | The week at a glance — the next 7 days, each listing every exercise's session. Deliberately **read-only**: rows are shortcuts that open the exercise, so logging keeps exactly one home (the Today card). Rest days are omitted; `deriveOverview` returns them, so listing them is a one-line change |
 | `ExerciseTab.tsx` | Composition: today card → stats → chart → schedule → history |
 | `TodayCard.tsx` | Per-set logging: tap a set when you've done it (tap again to undo); the last set completes the session. Max tests and minimum sets prompt for actual numbers; one button logs everything remaining; "Adjust reps" edits today's targets as an override *without* logging the session |
 | `ScheduleList.tsx` | Upcoming sessions; tapping a row opens an inline editor that stores an override |

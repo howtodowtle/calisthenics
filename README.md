@@ -24,7 +24,7 @@ toolchain) — plus one small app stylesheet carrying the "Clay" theme
 [Geist](https://vercel.com/font) typeface is self-hosted for offline use.
 [vite-plugin-pwa](https://vite-pwa-org.netlify.app) for the service worker,
 [Vitest](https://vitest.dev) for tests. No state library, no backend.
-Production bundle gzips to ~16 kB of JS + ~25 kB of CSS, plus ~30 kB of font.
+Production bundle gzips to ~22 kB of JS + ~26 kB of CSS, plus ~30 kB of font.
 
 ## Develop
 
@@ -45,6 +45,7 @@ src/core/            everything that isn't UI — pure TypeScript, fully unit-te
   types.ts           the data model (start here)
   store.ts           localStorage persistence + all mutations
   derive.ts          turns stored inputs into the displayed schedule
+  overview.ts        the week ahead, all exercises grouped per day
   schedule.ts        session dates + shift-forward on skipped days
   stats.ts           streak / totals
   dates.ts           date arithmetic (DST-safe)
