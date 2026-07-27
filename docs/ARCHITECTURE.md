@@ -84,12 +84,12 @@ unit-tested. Data flows in one direction:
 
 ```
 store.ts  ──(AppData signal)──►  derive.ts  ──(PlanView)──────────►  src/ui/*
-   │                               │                                    ▲
-   │                 ┌─────────────┼───────────────┐                    │
-   │           generators/    schedule.ts       results                 │
-   │           (what to do)   (when to do it)   (what happened)         │
-   └────────────────────►  overview.ts  ──(OverviewDay[])───────────────┘
-                        (every exercise, per day)
+(persistence)                      │                                    ▲
+                     ┌─────────────┼───────────────┐                    │
+               generators/    schedule.ts       results                 │
+               (what to do)   (when to do it)   (what happened)         │
+   select.ts ──────────►  overview.ts  ──(OverviewDay[])────────────────┘
+   (AppData queries)     (every exercise, per day)
 ```
 
 Note the layering: `derive.ts` is **plan-level** ("what does this plan look
@@ -97,9 +97,16 @@ like right now"), `overview.ts` is **app-level** ("what does my week look
 like") and is built by regrouping `derive.ts` output — it owns no scheduling
 rules of its own.
 
+`select.ts` exists so that layering doesn't drag in persistence: `store.ts`
+reads localStorage and creates the signal *at import time*, so a pure module
+(or its unit test) must not have to boot it just to ask "which plan is
+active?". The selectors are re-exported from `store.ts`, so UI code can keep
+importing either.
+
 | Module | Responsibility |
 |---|---|
-| `store.ts` | One `@preact/signals` signal over the whole `AppData` blob; every mutation goes through `update()` which clones, mutates, persists to localStorage. All mutations live here (`createPlan`, `completeSession`, `logSet`, `setOverride`, …) — UI components never touch storage directly. |
+| `store.ts` | One `@preact/signals` signal over the whole `AppData` blob; every mutation goes through `update()` which clones, mutates, persists to localStorage. All mutations live here (`createPlan`, `completeSession`, `logSet`, `setOverride`, …) — UI components never touch storage directly. Re-exports `select.ts`. |
+| `select.ts` | Pure `AppData` queries with one owner each: `sortedExercises`, `activePlanFor`, `hasActivePlan`, `resultsForExercise`, `dueExerciseCount`. Separate from `store.ts` so nothing has to import the storage singleton to read the blob. |
 | `derive.ts` | `derivePlanView(plan, results, today)` — merges generator output, overrides, results and shifted dates into `SessionView[]` plus `due` / `next` / `endDate`. The single source for "what does this plan look like right now". |
 | `overview.ts` | `deriveOverview(data, today, days)` — the week ahead across *all* exercises with an active plan, as one `OverviewDay` per calendar day (rest days included, empty). Completed sessions drop out; an overdue session files under today. Only today is a fact: later days assume you stay on plan, because `shiftedDates` moves them when you don't. |
 | `schedule.ts` | `baseDates` spreads sessions evenly per week from the start date (3/wk → offsets 0, 2, 4). `shiftedDates` slides the remaining schedule forward when the first incomplete session is overdue. The single place a smarter rescheduler would plug in. |

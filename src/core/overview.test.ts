@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countSessions, deriveOverview, OVERVIEW_DAYS, progressNote } from './overview'
+import { countSessions, deriveOverview, OVERVIEW_DAYS } from './overview'
 import type { AppData, Exercise, Plan, Result } from './types'
 
 /**
@@ -136,15 +136,6 @@ describe('deriveOverview', () => {
     expect(countSessions(deriveOverview(finished, '2026-07-20'))).toBe(0)
   })
 
-  it('honours a custom window length', () => {
-    expect(deriveOverview(app(), '2026-07-20', 1)).toHaveLength(1)
-    expect(countSessions(deriveOverview(app(), '2026-07-20', 1))).toBe(2)
-    // A 14-day window reaches next Monday, where both plans line up again.
-    const fortnight = deriveOverview(app(), '2026-07-20', 14)
-    expect(fortnight[7].date).toBe('2026-07-27')
-    expect(fortnight[7].entries).toHaveLength(2)
-  })
-
   it('carries the sets the UI renders, overrides included', () => {
     const edited = app({
       plans: [{ ...plan('p-push', 'e-push', 3), overrides: { 1: { sets: [{ target: 42, isMinimum: false }] } } }],
@@ -156,21 +147,8 @@ describe('deriveOverview', () => {
 })
 
 describe('countSessions', () => {
-  it('totals across days', () => {
+  it('totals across days, empty ones included', () => {
     expect(countSessions(deriveOverview(app(), '2026-07-20'))).toBe(5)
     expect(countSessions([])).toBe(0)
-  })
-})
-
-describe('progressNote', () => {
-  const session = { sets: [{ target: 5, isMinimum: false }, { target: 5, isMinimum: false }] }
-
-  it('is null with nothing checked off', () => {
-    expect(progressNote({ ...session, progress: undefined } as never)).toBeNull()
-    expect(progressNote({ ...session, progress: [null, null] } as never)).toBeNull()
-  })
-
-  it('counts the sets that landed', () => {
-    expect(progressNote({ ...session, progress: [5, null] } as never)).toEqual({ done: 1, total: 2 })
   })
 })

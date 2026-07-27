@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { derivePlanView, effectiveSession, fitProgress, isResultEditable, partialToClose } from './derive'
+import { countDone, derivePlanView, effectiveSession, fitProgress, isResultEditable, partialToClose } from './derive'
 import type { Plan, Result } from './types'
 
 const plan: Plan = {
@@ -200,5 +200,14 @@ describe('fitProgress', () => {
     expect(fitProgress([7, null], 4)).toEqual([7, null, null, null])
     expect(fitProgress([1, 2, 3, 4], 2)).toEqual([1, 2])
     expect(fitProgress([], 3)).toEqual([null, null, null])
+  })
+})
+
+describe('countDone', () => {
+  it('counts checked-off sets, zero included', () => {
+    expect(countDone([7, null, null])).toBe(1)
+    expect(countDone([0, 5])).toBe(2) // a logged 0 is done, not missing
+    expect(countDone([null, null])).toBe(0)
+    expect(countDone(undefined)).toBe(0)
   })
 })

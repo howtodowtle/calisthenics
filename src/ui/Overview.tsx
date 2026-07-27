@@ -1,11 +1,6 @@
-import {
-  countSessions,
-  deriveOverview,
-  OVERVIEW_DAYS,
-  type OverviewDay,
-  progressNote,
-} from '../core/overview'
-import { db } from '../core/store'
+import { countDone } from '../core/derive'
+import { countSessions, deriveOverview, OVERVIEW_DAYS, type OverviewDay } from '../core/overview'
+import { db, hasActivePlan } from '../core/store'
 import { formatDate, SessionBadges, setsSummary, stagger } from './format'
 
 /**
@@ -29,10 +24,26 @@ export function Overview({
   onOpenSettings: () => void
 }) {
   const data = db.value
-  const days = deriveOverview(data, today, OVERVIEW_DAYS)
+  const days = deriveOverview(data, today)
   const scheduled = days.filter((d) => d.entries.length > 0)
   const total = countSessions(days)
-  const hasActivePlan = data.plans.some((p) => p.status === 'active')
+
+  // Rows cascade in across the whole list, not per day: each group's animation
+  // starts where the previous group's ended.
+  let row = 0
+  const groups = scheduled.map((day) => {
+    const from = row
+    row += day.entries.length
+    return (
+      <DayGroup
+        key={day.date}
+        day={day}
+        today={today}
+        from={from}
+        onSelectExercise={onSelectExercise}
+      />
+    )
+  })
 
   return (
     <>
@@ -45,7 +56,7 @@ export function Overview({
         </small>
       </h1>
 
-      {!hasActivePlan ? (
+      {!hasActivePlan(data) ? (
         <div class="card empty" data-size="sm">
           <section>
             <div class="big-emoji">🗓</div>
@@ -70,18 +81,7 @@ export function Overview({
       ) : (
         <>
           <div class="card" data-size="sm">
-            <section>
-              {scheduled.map((day, i) => (
-                <DayGroup
-                  key={day.date}
-                  day={day}
-                  today={today}
-                  // Rows cascade in across the whole list, not per day.
-                  from={countSessions(scheduled.slice(0, i))}
-                  onSelectExercise={onSelectExercise}
-                />
-              ))}
-            </section>
+            <section>{groups}</section>
           </div>
           <p class="dim overview-note">
             Everything after today assumes you stay on plan — skip a session and the rest
@@ -106,13 +106,12 @@ function DayGroup({
   onSelectExercise: (exerciseId: string) => void
 }) {
   const label = formatDate(day.date, today)
-  const isToday = day.date === today
 
   return (
     <div class="overview-day" role="group" aria-label={label}>
-      <div class={isToday ? 'eyebrow is-today' : 'eyebrow'}>{label}</div>
+      <div class={day.date === today ? 'eyebrow is-today' : 'eyebrow'}>{label}</div>
       {day.entries.map(({ exercise, session }, i) => {
-        const partial = progressNote(session)
+        const done = countDone(session.progress)
         return (
           <button
             key={exercise.id}
@@ -126,13 +125,11 @@ function DayGroup({
               </span>
               <span class="who-name">{exercise.name}</span>
             </span>
-            <span class="sets-line" style={{ flex: 1 }}>
-              {setsSummary(session.sets, exercise.unit)}
-            </span>
+            <span class="sets-line">{setsSummary(session.sets, exercise.unit)}</span>
             <SessionBadges type={session.type} overridden={session.overridden} />
-            {partial && (
+            {done > 0 && (
               <span class="note">
-                {partial.done}/{partial.total} done
+                {done}/{session.sets.length} done
               </span>
             )}
             <span class="chev" aria-hidden>

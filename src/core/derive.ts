@@ -33,6 +33,11 @@ export function fitProgress(
   return Array.from({ length: count }, (_, i) => actuals[i] ?? null)
 }
 
+/** How many sets have been checked off — the one definition of "how far into
+ * this session am I", shared by the Today card and the overview. */
+export const countDone = (actuals: readonly (number | null)[] | undefined): number =>
+  actuals?.filter((a) => a != null).length ?? 0
+
 /** Effective (type, sets) of a single session — generator output ⊕ override.
  * Point lookup for store mutations, so logging derives the session from the
  * plan's own inputs instead of trusting a UI render-time snapshot. */

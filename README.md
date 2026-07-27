@@ -44,6 +44,7 @@ Icons: `sh scripts/make-icons.sh` (requires ImageMagick).
 src/core/            everything that isn't UI — pure TypeScript, fully unit-tested
   types.ts           the data model (start here)
   store.ts           localStorage persistence + all mutations
+  select.ts          pure queries over the stored blob
   derive.ts          turns stored inputs into the displayed schedule
   overview.ts        the week ahead, all exercises grouped per day
   schedule.ts        session dates + shift-forward on skipped days

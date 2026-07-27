@@ -427,27 +427,9 @@ button.set-chip:disabled {
   white-space: nowrap;
 }
 
-/* Leading column on overview rows — the exercise, where the schedule list
-   puts the date. Fixed width so the sets line up down the whole week; wide
-   enough for "Push-ups" + emoji before the name has to ellipsis. */
-.session-row .who {
-  flex: 0 0 118px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
-.session-row .who-emoji {
-  font-size: 1rem;
-}
-
-.session-row .who-name {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+/* The sets are the row's flexible middle; everything else is fixed-width. */
+.session-row .sets-line {
+  flex: 1;
 }
 
 .session-row.done .sets-line {
@@ -470,16 +452,13 @@ button.set-chip:disabled {
     flex-basis: 74px;
     font-size: 0.78rem;
   }
-
-  .session-row .who {
-    flex-basis: 106px;
-    font-size: 0.8rem;
-  }
 }
 
 /* ---- overview (the week at a glance) ----
    Day groups live in one card; the day label is the separator, so a group's
-   last row loses its rule for free via .session-row:last-child. */
+   last row loses its rule for free via .session-row:last-child. Rows are
+   .session-row with the exercise in the leading column where the schedule
+   list puts the date. */
 
 .overview-day + .overview-day {
   margin-top: 16px;
@@ -494,6 +473,35 @@ button.set-chip:disabled {
 /* Today reads as the live day; the rest of the week stays muted. */
 .overview-day .eyebrow.is-today {
   color: var(--foreground);
+}
+
+/* Fixed width so the sets line up down the whole week; wide enough for
+   "Push-ups" + emoji before the name has to ellipsis. */
+.session-row .who {
+  flex: 0 0 118px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.session-row .who-emoji {
+  font-size: 1rem;
+}
+
+.session-row .who-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 400px) {
+  .session-row .who {
+    flex-basis: 106px;
+    font-size: 0.8rem;
+  }
 }
 
 .overview-note {

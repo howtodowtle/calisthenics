@@ -1,6 +1,6 @@
-import { addDays } from './dates'
+import { addDays, daysBetween } from './dates'
 import { derivePlanView, type SessionView } from './derive'
-import { activePlanFor, resultsForExercise, sortedExercises } from './store'
+import { activePlanFor, resultsForExercise, sortedExercises } from './select'
 import type { AppData, Exercise } from './types'
 
 /**
@@ -22,8 +22,6 @@ import type { AppData, Exercise } from './types'
 /** One exercise's session landing on a given day. */
 export interface OverviewEntry {
   exercise: Exercise
-  /** The plan the session belongs to — the exercise's active one. */
-  planId: string
   session: SessionView
 }
 
@@ -39,7 +37,7 @@ export interface OverviewDay {
 export const OVERVIEW_DAYS = 7
 
 /**
- * Every day from `today` to `today + days - 1`, each with the incomplete
+ * Every day from today to `today + OVERVIEW_DAYS - 1`, each with the incomplete
  * sessions scheduled on it across all exercises with an active plan.
  *
  * The full window is always returned, rest days included as empty entries —
@@ -49,13 +47,11 @@ export const OVERVIEW_DAYS = 7
  * session (the plan's `due` one, if its date somehow slipped behind) is filed
  * under today — it's what you owe now, not a past appointment.
  */
-export function deriveOverview(
-  d: AppData,
-  today: string,
-  days: number = OVERVIEW_DAYS,
-): OverviewDay[] {
-  const lastDate = addDays(today, days - 1)
-  const byDate = new Map<string, OverviewEntry[]>()
+export function deriveOverview(d: AppData, today: string): OverviewDay[] {
+  const days: OverviewDay[] = Array.from({ length: OVERVIEW_DAYS }, (_, i) => ({
+    date: addDays(today, i),
+    entries: [],
+  }))
 
   for (const exercise of sortedExercises(d)) {
     const plan = activePlanFor(d, exercise.id)
@@ -64,30 +60,17 @@ export function deriveOverview(
 
     for (const session of view.sessions) {
       if (session.status === 'done') continue
-      const date = session.date < today ? today : session.date
-      // Incomplete sessions are date-ordered (a plan's dates only ever
-      // increase), so the first one past the window ends this plan's scan.
-      if (date > lastDate) break
-      const entry: OverviewEntry = { exercise, planId: plan.id, session }
-      const existing = byDate.get(date)
-      if (existing) existing.push(entry)
-      else byDate.set(date, [entry])
+      // Clamping at 0 files an overdue session under today. Incomplete sessions
+      // are date-ordered, so the first one past the window ends this plan's scan.
+      const i = Math.max(0, daysBetween(today, session.date))
+      if (i >= days.length) break
+      days[i].entries.push({ exercise, session })
     }
   }
 
-  return Array.from({ length: days }, (_, i) => {
-    const date = addDays(today, i)
-    return { date, entries: byDate.get(date) ?? [] }
-  })
+  return days
 }
 
 /** Total sessions in the window — the "3 sessions in the next 7 days" line. */
 export const countSessions = (days: OverviewDay[]): number =>
   days.reduce((n, day) => n + day.entries.length, 0)
-
-/** How far into a session's sets you already are, for a day that's underway.
- * `null` when nothing is checked off, so callers can skip the annotation. */
-export function progressNote(session: SessionView): { done: number; total: number } | null {
-  const done = session.progress?.filter((a) => a != null).length ?? 0
-  return done > 0 ? { done, total: session.sets.length } : null
-}

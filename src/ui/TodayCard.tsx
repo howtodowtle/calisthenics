@@ -1,6 +1,6 @@
 import { Check } from 'lucide-preact'
 import { useState } from 'preact/hooks'
-import { fitProgress, type SessionView } from '../core/derive'
+import { countDone, fitProgress, type SessionView } from '../core/derive'
 import { completeSession, logSet, setOverride, undoSet } from '../core/store'
 import type { Exercise } from '../core/types'
 import { formatDate, SessionBadges, setLabel, unitSuffix } from './format'
@@ -36,7 +36,7 @@ export function TodayCard({
   const [values, setValues] = useState<number[]>([])
 
   const progress = fitProgress(session.progress ?? [], session.sets.length)
-  const doneCount = progress.filter((a) => a != null).length
+  const doneCount = countDone(progress)
   const remaining = session.sets.length - doneCount
   const isTest = session.type === 'test'
   /** "Adjust reps": editing today's targets, not logging what was done. */

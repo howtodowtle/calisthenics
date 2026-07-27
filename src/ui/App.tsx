@@ -40,14 +40,16 @@ export function App() {
 
   const [tab, setTab] = useState<string>(() => localStorage.getItem(TAB_KEY) ?? OVERVIEW)
 
-  // Where to land when the remembered tab can't be shown — the overview, or
-  // Settings while the app is still empty (nothing to overview, no tab bar).
+  // Where to land when a tab can't be shown — the overview, or Settings while
+  // the app is still empty (nothing to overview, and no tab bar to escape by).
   const home = exercises.length > 0 ? OVERVIEW : 'settings'
-  const known =
-    tab === 'settings' ||
-    tab === 'help' ||
-    (exercises.length > 0 && (tab === OVERVIEW || exercises.some((e) => e.id === tab)))
-  const activeTab = known ? tab : home
+  /** Whether a remembered tab id can actually be rendered right now. */
+  const canShow = (id: string | null): id is string =>
+    id === 'settings' ||
+    id === 'help' ||
+    (id === OVERVIEW && exercises.length > 0) ||
+    exercises.some((e) => e.id === id)
+  const activeTab = canShow(tab) ? tab : home
 
   const selectTab = (id: string) => {
     setTab(id)
@@ -69,14 +71,12 @@ export function App() {
   const onPage = activeTab === 'settings' || activeTab === 'help'
   const [lastTab, setLastTab] = useState<string | null>(null)
   const openPage = (page: 'settings' | 'help') => {
+    // Guarded, so opening Help from Settings doesn't make Settings the tab to
+    // come back to — `lastTab` is only ever a real tab.
     if (!onPage) setLastTab(activeTab)
     selectTab(page)
   }
-  const closePage = () => {
-    const target =
-      lastTab && (lastTab === OVERVIEW || exercises.some((e) => e.id === lastTab)) ? lastTab : home
-    selectTab(target)
-  }
+  const closePage = () => selectTab(canShow(lastTab) ? lastTab : home)
 
   return (
     <>
