@@ -26,6 +26,14 @@ export function Help() {
         did — the rest count as 0 — and the plan moves on.
       </p>
 
+      <h2>The week ahead</h2>
+      <p>
+        The <strong>Overview</strong> tab is every exercise on one screen, day by day for the
+        next week — what's on today, what's coming, and the sets each session asks for. Tap
+        any row to jump to that exercise. Only today is fixed: the days after it assume you
+        stay on plan, and shift forward if you skip.
+      </p>
+
       <h2>Make it yours</h2>
       <p>
         Tap any upcoming session to edit its sets. Add your own exercises (anything counted in

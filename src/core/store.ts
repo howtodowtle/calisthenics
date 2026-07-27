@@ -1,16 +1,26 @@
 import { signal } from '@preact/signals'
 import { todayISO } from './dates'
-import { derivePlanView, effectiveSession, fitProgress, isResultEditable, isStalePartial, partialToClose } from './derive'
+import { effectiveSession, fitProgress, isResultEditable, isStalePartial, partialToClose } from './derive'
 import type {
   AppData,
   Exercise,
   Plan,
-  Result,
   ResultSet,
   SessionType,
   SetTemplate,
   Unit,
 } from './types'
+
+// The pure `AppData` selectors live in `select.ts` so core modules can use them
+// without importing this one (which boots localStorage at import time). Callers
+// that already reach for the store keep working.
+export {
+  activePlanFor,
+  dueExerciseCount,
+  hasActivePlan,
+  resultsForExercise,
+  sortedExercises,
+} from './select'
 
 /**
  * Single source of truth: one signal over the whole AppData blob, persisted to
@@ -90,10 +100,6 @@ function update(mutate: (draft: AppData) => void): void {
 
 // ---- exercises ----
 
-/** Exercises in display order. */
-export const sortedExercises = (d: AppData): Exercise[] =>
-  [...d.exercises].sort((a, b) => a.sortOrder - b.sortOrder)
-
 export function addExercise(name: string, emoji: string, unit: Unit): void {
   update((d) => {
     d.exercises.push({
@@ -125,24 +131,6 @@ export function deleteExercise(id: string): void {
 }
 
 // ---- plans ----
-
-/** The one active plan of an exercise, if any. */
-export const activePlanFor = (d: AppData, exerciseId: string): Plan | undefined =>
-  d.plans.find((p) => p.exerciseId === exerciseId && p.status === 'active')
-
-/** Results across all plans (active and archived) of an exercise. */
-export function resultsForExercise(d: AppData, exerciseId: string): Result[] {
-  const planIds = new Set(d.plans.filter((p) => p.exerciseId === exerciseId).map((p) => p.id))
-  return d.results.filter((r) => planIds.has(r.planId))
-}
-
-/** How many exercises have a session due — drives the tab notification badge. */
-export function dueExerciseCount(d: AppData, today: string): number {
-  return d.exercises.filter((e) => {
-    const plan = activePlanFor(d, e.id)
-    return plan && derivePlanView(plan, resultsForExercise(d, e.id), today).due !== null
-  }).length
-}
 
 function archive(p: Plan): void {
   p.status = 'archived'

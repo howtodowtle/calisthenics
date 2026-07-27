@@ -418,11 +418,18 @@ button.set-chip:disabled {
   line-height: 1;
 }
 
-.session-row .max-hint {
+/* Trailing annotations: the schedule's "max ~42", the overview's "2/4 done". */
+.session-row .max-hint,
+.session-row .note {
   color: var(--muted-foreground);
   font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+/* The sets are the row's flexible middle; everything else is fixed-width. */
+.session-row .sets-line {
+  flex: 1;
 }
 
 .session-row.done .sets-line {
@@ -445,6 +452,61 @@ button.set-chip:disabled {
     flex-basis: 74px;
     font-size: 0.78rem;
   }
+}
+
+/* ---- overview (the week at a glance) ----
+   Day groups live in one card; the day label is the separator, so a group's
+   last row loses its rule for free via .session-row:last-child. Rows are
+   .session-row with the exercise in the leading column where the schedule
+   list puts the date. */
+
+.overview-day + .overview-day {
+  margin-top: 16px;
+}
+
+.overview-day .eyebrow {
+  margin-bottom: 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Today reads as the live day; the rest of the week stays muted. */
+.overview-day .eyebrow.is-today {
+  color: var(--foreground);
+}
+
+/* Fixed width so the sets line up down the whole week; wide enough for
+   "Push-ups" + emoji before the name has to ellipsis. */
+.session-row .who {
+  flex: 0 0 118px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.session-row .who-emoji {
+  font-size: 1rem;
+}
+
+.session-row .who-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 400px) {
+  .session-row .who {
+    flex-basis: 106px;
+    font-size: 0.8rem;
+  }
+}
+
+.overview-note {
+  margin: -2px 6px 0;
+  font-size: 0.78rem;
 }
 
 .session-editor {
@@ -541,6 +603,13 @@ button.set-chip:disabled {
   padding: 3px 16px;
   border-radius: 999px;
   transition: background var(--dur) var(--ease-out-expo);
+}
+
+/* The overview tab's icon is a lucide glyph rather than a user emoji: 21px
+   plus 3px margins matches the emoji pill's 27px line box, so tabs align. */
+.tabbar button .icon svg {
+  display: block;
+  margin: 3px 0;
 }
 
 .tabbar button.active {

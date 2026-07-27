@@ -41,9 +41,7 @@ export function ScheduleList({
                 onClick={() => setOpen(s.index)}
               >
                 <span class="date">{formatDate(s.date, today)}</span>
-                <span class="sets-line" style={{ flex: 1 }}>
-                  {setsSummary(s.sets, exercise.unit)}
-                </span>
+                <span class="sets-line">{setsSummary(s.sets, exercise.unit)}</span>
                 <SessionBadges type={s.type} overridden={s.overridden} />
                 {s.predictedMax != null && (
                   <span class="max-hint">{maxHint(s.predictedMax, exercise.unit)}</span>

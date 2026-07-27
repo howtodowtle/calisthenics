@@ -47,9 +47,7 @@ export function HistoryList({
                 onClick={editable ? () => setOpen(r.id) : undefined}
               >
                 <span class="date">{formatDate(r.date, today)}</span>
-                <span class="sets-line" style={{ flex: 1 }}>
-                  {actualsSummary(r.sets, unit)}
-                </span>
+                <span class="sets-line">{actualsSummary(r.sets, unit)}</span>
                 <SessionBadges type={r.sessionType} />
                 {pm != null && <span class="max-hint">{maxHint(pm, unit)}</span>}
                 {editable && <span class="chev">›</span>}
