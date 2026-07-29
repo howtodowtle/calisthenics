@@ -219,7 +219,7 @@ update re-renders everything; at this data size that's the simplest correct mode
 
 | File | Screen area |
 |---|---|
-| `App.tsx` | Tab bar (Overview first, then one tab per exercise; Settings and Help sit behind fixed buttons top-right, not in the bar), `useToday()` (re-renders on foregrounding / every minute so "today" survives midnight). The open tab persists under `ui.tab.v2`; the overview is the default landing tab |
+| `App.tsx` | Tab bar (Overview first, then one tab per exercise; Settings and Help sit behind fixed buttons top-right, not in the bar), `useToday()` (re-renders on foregrounding / every minute so "today" survives midnight). The open tab persists under `ui.tab.v2`; the overview is the default landing tab. Past ~4 exercises the tabs outgrow the width and the bar scrolls sideways; `useCenterActiveTab` centres the open one, found by its `aria-current` |
 | `Overview.tsx` | The week at a glance — the next 7 days, each listing every exercise's session. Deliberately **read-only**: rows are shortcuts that open the exercise, so logging keeps exactly one home (the Today card). Rest days are omitted; `deriveOverview` returns them, so listing them is a one-line change |
 | `ExerciseTab.tsx` | Composition: today card → stats → chart → schedule → history |
 | `TodayCard.tsx` | Per-set logging: tap a set when you've done it (tap again to undo); the last set completes the session. Max tests and minimum sets prompt for actual numbers; one button logs everything remaining; "Adjust reps" edits today's targets as an override *without* logging the session |

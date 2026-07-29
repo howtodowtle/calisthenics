@@ -563,12 +563,25 @@ button.set-chip:disabled {
   left: 0;
   right: 0;
   display: flex;
-  justify-content: space-around;
   background: color-mix(in oklab, var(--background) 85%, transparent);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
   border-top: 1px solid var(--border);
-  padding: 7px 0 calc(7px + env(safe-area-inset-bottom));
+  /* 6px sides: a small gutter so a tab scrolled to either end doesn't sit
+     flush against the screen edge. */
+  padding: 7px 6px calc(7px + env(safe-area-inset-bottom));
+  /* Past ~4 programs the tabs no longer fit: scroll them sideways instead of
+     squeezing. The open tab is scrolled into view from JS, so a partly visible
+     neighbour at the edge is the cue that there's more. */
+  overflow-x: auto;
+  /* Don't let a sideways flick turn into the browser's back gesture. */
+  overscroll-behavior-x: contain;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+
+.tabbar::-webkit-scrollbar {
+  display: none;
 }
 
 .tabbar button {
@@ -584,6 +597,10 @@ button.set-chip:disabled {
   color: var(--muted-foreground);
   padding: 2px 6px;
   min-width: 68px;
+  white-space: nowrap;
+  /* Grow to share the bar while the tabs fit — equal growth reads exactly like
+     space-around — but never shrink: past that they overflow and scroll. */
+  flex: 1 0 auto;
   cursor: pointer;
 }
 
@@ -726,5 +743,10 @@ button.set-chip:disabled {
   * {
     transition: none !important;
     animation: none !important;
+  }
+
+  /* Scrolling is neither, so the tab bar needs saying explicitly. */
+  .tabbar {
+    scroll-behavior: auto;
   }
 }

@@ -1,5 +1,5 @@
 import { CalendarDays, CircleQuestionMark, Settings as SettingsIcon, X } from 'lucide-preact'
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { todayISO } from '../core/dates'
 import { db, dueExerciseCount, finalizeStalePartials, sortedExercises } from '../core/store'
 import { ExerciseTab } from './ExerciseTab'
@@ -33,6 +33,29 @@ function useToday(): string {
   return today
 }
 
+/**
+ * The tab bar scrolls sideways once the programs outgrow the screen. Keep the
+ * open tab centred so it's never the one hiding off-screen. Returns the ref to
+ * put on the bar; the open tab is the one marked `aria-current`.
+ */
+function useCenterActiveTab(activeTab: string) {
+  const bar = useRef<HTMLElement>(null)
+  const settled = useRef(false)
+  useEffect(() => {
+    const btn = bar.current?.querySelector<HTMLButtonElement>('[aria-current]')
+    btn?.scrollIntoView({
+      inline: 'center',
+      block: 'nearest',
+      // The first paint jumps — a remembered tab is simply "where we are".
+      // Later switches defer to the bar's CSS scroll-behavior, which the
+      // reduced-motion block turns off.
+      behavior: settled.current ? 'auto' : 'instant',
+    })
+    settled.current = true
+  }, [activeTab])
+  return bar
+}
+
 export function App() {
   const data = db.value
   const today = useToday()
@@ -57,6 +80,7 @@ export function App() {
   }
 
   const exercise = exercises.find((e) => e.id === activeTab)
+  const tabbar = useCenterActiveTab(activeTab)
 
   // Close out partial sessions from past days when the clock crosses midnight
   // while the app stays open; the store itself sweeps on load and import.
@@ -109,9 +133,10 @@ export function App() {
         <Settings onSelectExercise={selectTab} />
       )}
       {exercises.length > 0 && (
-        <nav class="tabbar">
+        <nav class="tabbar" ref={tabbar}>
           <button
             class={activeTab === OVERVIEW ? 'active' : ''}
+            aria-current={activeTab === OVERVIEW ? 'page' : undefined}
             onClick={() => selectTab(OVERVIEW)}
           >
             <span class="icon">
@@ -123,6 +148,7 @@ export function App() {
             <button
               key={e.id}
               class={activeTab === e.id ? 'active' : ''}
+              aria-current={activeTab === e.id ? 'page' : undefined}
               onClick={() => selectTab(e.id)}
             >
               <span class="icon">{e.emoji}</span>
