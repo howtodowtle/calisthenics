@@ -6,6 +6,12 @@ import { VitePWA } from 'vite-plugin-pwa'
 // BASE_PATH is set by the GitHub Pages workflow to "/<repo-name>/".
 export default defineConfig({
   base: process.env.BASE_PATH || '/',
+  // Baked in at build time (see src/vite-env.d.ts); the Help footer shows
+  // them so an installed PWA can tell which deploy it is running.
+  define: {
+    __COMMIT__: JSON.stringify((process.env.GITHUB_SHA ?? '').slice(0, 7)),
+    __BUILT_AT__: JSON.stringify(new Date().toISOString().slice(0, 10)),
+  },
   resolve: {
     alias: {
       // Basecoat's package exports don't expose the standalone (Tailwind-free)

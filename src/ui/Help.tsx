@@ -57,6 +57,10 @@ export function Help() {
         A personal project, built for my own training. Free to use, but not a product — no
         support, no guarantees.
       </p>
+
+      <p class="build-stamp">
+        Build {__COMMIT__ || 'dev'} · {__BUILT_AT__}
+      </p>
     </>
   )
 }
