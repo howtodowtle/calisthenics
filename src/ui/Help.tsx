@@ -58,9 +58,7 @@ export function Help() {
         support, no guarantees.
       </p>
 
-      <p class="build-stamp">
-        Build {__COMMIT__ || 'dev'} · {__BUILT_AT__}
-      </p>
+      <p class="dim build-stamp">Build {__BUILD__}</p>
     </>
   )
 }

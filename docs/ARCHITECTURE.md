@@ -245,6 +245,8 @@ properties at the top, automatic dark mode via `prefers-color-scheme`.
 
 - `vite-plugin-pwa` (Workbox) precaches the build; `registerType: 'autoUpdate'`
   means an installed app fetches new deploys on next launch, no user action.
+  To verify which deploy an app is running: `vite.config.ts` bakes the short
+  `GITHUB_SHA` + build date in via `define`, and the Help footer prints them.
 - All data sits in **one localStorage key** (`training-pwa`) as versioned
   `AppData`. `store.ts#load()` falls back to seed data if the blob is missing or
   malformed. Schema changes require a version bump + migration — recipe in

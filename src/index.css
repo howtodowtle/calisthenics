@@ -131,12 +131,10 @@ h2 {
   font-size: 0.85rem;
 }
 
-/* Help footer: which deploy this is (commit + build date, baked in by vite). */
+/* Deltas on .dim for the Help footer's build stamp. */
 .build-stamp {
-  color: var(--muted-foreground);
   font-size: 0.78rem;
   text-align: center;
-  font-variant-numeric: tabular-nums;
 }
 
 .sets-line {
