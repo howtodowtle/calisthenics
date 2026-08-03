@@ -454,6 +454,48 @@ button.set-chip:disabled {
   }
 }
 
+/* ---- swipe to delete (history rows) ----
+   Each row sits in a .swipe-row wrapper over a red action strip; dragging
+   left slides the opaque row off it. The wrapper makes the row its only
+   child, so the card's between-row rules move up to the wrappers. */
+
+.swipe-row {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+  /* Horizontal drags are ours; vertical stays with the scroller. */
+  touch-action: pan-y;
+}
+
+.swipe-row .session-row {
+  border-bottom: none;
+}
+
+.swipe-row:last-child {
+  border-bottom: none;
+}
+
+.swipe-row .swipe-action {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 20px;
+  background: var(--destructive);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.swipe-row .swipe-content {
+  position: relative;
+  /* Opaque over the action strip: only the vacated part shows red. */
+  background: var(--card);
+  transition: transform var(--dur-fast) ease;
+  will-change: transform;
+}
+
 /* ---- overview (the week at a glance) ----
    Day groups live in one card; the day label is the separator, so a group's
    last row loses its rule for free via .session-row:last-child. Rows are
