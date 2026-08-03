@@ -101,7 +101,7 @@ describe('deriveOverview', () => {
     expect(monday.entries.map((e) => e.exercise.name)).toEqual(['Pull-ups'])
   })
 
-  it('files a skipped session under today, not its original date', () => {
+  it('files an overdue session under today, not its original date', () => {
     // Nothing logged; by Friday the Monday session has slid forward onto today.
     const [today] = deriveOverview(app(), '2026-07-24')
     expect(today.date).toBe('2026-07-24')

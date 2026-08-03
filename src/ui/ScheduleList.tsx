@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks'
-import type { SessionView } from '../core/derive'
+import { isPending, type SessionView } from '../core/derive'
 import { clearOverride, setOverride } from '../core/store'
 import type { Exercise } from '../core/types'
 import { formatDate, maxHint, SessionBadges, setLabel, setsSummary, stagger } from './format'
@@ -20,7 +20,7 @@ export function ScheduleList({
   exercise: Exercise
   today: string
 }) {
-  const upcoming = sessions.filter((s) => s.status !== 'done' && s.status !== 'skipped')
+  const upcoming = sessions.filter(isPending)
   const [open, setOpen] = useState<number | null>(null)
 
   if (upcoming.length === 0) return null

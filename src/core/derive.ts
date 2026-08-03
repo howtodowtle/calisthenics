@@ -18,7 +18,7 @@ export interface SessionView {
   date: string
   week: number
   result?: Result
-  /** 'skipped': its Result was deleted — never due again, hidden from lists. */
+  /** 'skipped': its Result was deleted — settled, not owed (see Plan.skipped). */
   status: 'done' | 'due' | 'upcoming' | 'skipped'
   /** From the generator, when its algorithm models one. */
   predictedMax?: number
@@ -39,6 +39,12 @@ export function fitProgress(
  * this session am I", shared by the Today card and the overview. */
 export const countDone = (actuals: readonly (number | null)[] | undefined): number =>
   actuals?.filter((a) => a != null).length ?? 0
+
+/** Sessions still owed — the one definition of what the schedule list and
+ * the week overview show. A whitelist, so any future status stays hidden
+ * until it opts in. */
+export const isPending = (s: SessionView): boolean =>
+  s.status === 'due' || s.status === 'upcoming'
 
 /** Effective (type, sets) of a single session — generator output ⊕ override.
  * Point lookup for store mutations, so logging derives the session from the
@@ -65,7 +71,7 @@ export const isStalePartial = (progress: SessionProgress | undefined, today: str
  * reps — so it commits as done and the plan advances; `commitResult` records
  * the nulls as 0 and skips a test's calibration when its measuring set is
  * null. Returns null when there is nothing to close: not a stale partial, no
- * set done at all (a skipped session rolls forward instead), or a session
+ * set done at all (an untouched session rolls forward instead), or a session
  * index the generator no longer produces.
  */
 export function partialToClose(
@@ -101,6 +107,8 @@ export interface PlanView {
   /** Next upcoming session when nothing is due. */
   next: SessionView | null
   endDate: string
+  /** Results only — a skipped slot counts to neither side, so a plan with
+   * skips never reads N/N. */
   completedCount: number
   /** A session of this exercise was logged today — any plan, so finishing an
    * old plan's session still counts as having trained. Also the input to the
@@ -118,11 +126,9 @@ export function derivePlanView(plan: Plan, results: Result[], today: string): Pl
     if (r.planId === plan.id) resultByIndex.set(r.sessionIndex, r)
   }
 
-  // A skipped session (its Result was deleted) is settled, not owed: the
-  // plan moves past it exactly as if it were done.
-  const skipped = new Set(plan.skipped ?? [])
+  const skipped = plan.skipped ?? []
   let firstIncomplete = templates.findIndex(
-    (t) => !resultByIndex.has(t.index) && !skipped.has(t.index),
+    (t) => !resultByIndex.has(t.index) && !skipped.includes(t.index),
   )
   if (firstIncomplete === -1) firstIncomplete = templates.length
   const completedToday = results.some((r) => r.date === today)
@@ -136,17 +142,19 @@ export function derivePlanView(plan: Plan, results: Result[], today: string): Pl
     earliest,
   )
 
+  /** The session state machine — first match wins. */
+  const statusOf = (index: number, i: number, result?: Result): SessionView['status'] => {
+    if (result) return 'done'
+    if (skipped.includes(index)) return 'skipped' // settled, not owed
+    // Only the first incomplete session can be due — logging is sequential.
+    if (i === firstIncomplete && dates[i] <= today) return 'due'
+    return 'upcoming'
+  }
+
   const sessions: SessionView[] = templates.map((t, i) => {
     const result = resultByIndex.get(t.index)
     const override = plan.overrides[t.index]
-    // Only the first incomplete session can be due — logging is sequential.
-    const status: SessionView['status'] = result
-      ? 'done'
-      : skipped.has(t.index)
-        ? 'skipped'
-        : i === firstIncomplete && dates[i] <= today
-          ? 'due'
-          : 'upcoming'
+    const status = statusOf(t.index, i, result)
     const sets = override ? override.sets : t.sets
     return {
       index: t.index,
