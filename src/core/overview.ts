@@ -59,7 +59,7 @@ export function deriveOverview(d: AppData, today: string): OverviewDay[] {
     const view = derivePlanView(plan, resultsForExercise(d, exercise.id), today)
 
     for (const session of view.sessions) {
-      if (session.status === 'done') continue
+      if (session.status === 'done' || session.status === 'skipped') continue
       // Clamping at 0 files an overdue session under today. Incomplete sessions
       // are date-ordered, so the first one past the window ends this plan's scan.
       const i = Math.max(0, daysBetween(today, session.date))

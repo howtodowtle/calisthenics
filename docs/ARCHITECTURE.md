@@ -18,7 +18,10 @@ Everything else follows from this.
   correct the actual counts you logged — a fat-finger fix on the day. Only the
   actuals move; targets, date and set count stay fixed, and a max test's
   calibration point follows the corrected number. After the window closes the
-  Result is immutable.
+  Result is immutable — though it can still be deleted outright from History
+  (swipe left, confirm). Deletion means skipped, not owed: the session is
+  recorded in `Plan.skipped`, never comes due again, and the schedule around
+  it stays put; a deleted test takes its calibration point with it.
 - **Future = pure function.** The schedule you see for incomplete sessions is
   recomputed on every render:
 
@@ -115,6 +118,7 @@ importing either.
 | `dates.ts` | ISO-date arithmetic done at UTC noon so DST transitions can't skew day math. |
 
 Session state machine (in `derive.ts`): a session is `done` (has a Result),
+`skipped` (its Result was deleted — settled, hidden from lists, never due),
 `due` (the **first** incomplete session, date ≤ today — logging is strictly
 sequential, so at most one session is ever due), or `upcoming`. One session
 per day: once today's session is logged, the remaining schedule shifts from
@@ -227,7 +231,7 @@ update re-renders everything; at this data size that's the simplest correct mode
 | `ExerciseTab.tsx` | Composition: today card → stats → chart → schedule → history |
 | `TodayCard.tsx` | Per-set logging: tap a set when you've done it (tap again to undo); the last set completes the session. Max tests and minimum sets prompt for actual numbers; one button logs everything remaining; "Adjust reps" edits today's targets as an override *without* logging the session |
 | `ScheduleList.tsx` | Upcoming sessions; tapping a row opens an inline editor that stores an override |
-| `HistoryList.tsx` | Past Results, newest first; rows finished within 24h are tappable to correct the logged actuals |
+| `HistoryList.tsx` | Past Results, newest first; rows finished within 24h are tappable to correct the logged actuals. Rows swipe left to delete their Result behind a confirm (`SwipeToDelete.tsx` owns the gesture) |
 | `Chart.tsx` | SVG progress chart — planned volume line, done dots, test diamonds, tap/drag crosshair. Colors are `--viz-*` tokens validated for both themes |
 | `Settings.tsx` | Exercise CRUD, plan lifecycle (create / edit params / stop / delete), self-rendering param forms, JSON backup |
 

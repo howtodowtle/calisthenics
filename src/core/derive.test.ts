@@ -63,6 +63,18 @@ describe('derivePlanView', () => {
     expect(view.endDate).toBe('2026-10-24')
   })
 
+  it('treats a skipped session as settled: never due, schedule unmoved', () => {
+    // Session 2's Result was deleted (deleteResult marks it skipped). The
+    // plan owes session 3 next — session 2 must not come back as due, and
+    // the sessions around it keep their dates.
+    const p: Plan = { ...plan, skipped: [2] }
+    const view = derivePlanView(p, [result(1, '2026-07-20')], '2026-07-24')
+    expect(view.sessions[1].status).toBe('skipped')
+    expect(view.due?.index).toBe(3)
+    expect(view.sessions[2].date).toBe('2026-07-24')
+    expect(view.completedCount).toBe(1)
+  })
+
   it('applies overrides and flags the session as edited', () => {
     const edited: Plan = {
       ...plan,

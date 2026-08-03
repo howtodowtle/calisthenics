@@ -1,13 +1,16 @@
 import { useState } from 'preact/hooks'
 import { isResultEditable } from '../core/derive'
-import { editResult } from '../core/store'
+import { deleteResult, editResult } from '../core/store'
 import type { Result, Unit } from '../core/types'
 import { actualsSummary, formatDate, maxHint, SessionBadges, setLabel, stagger } from './format'
 import { SetGridEditor } from './SetGridEditor'
+import { SwipeToDelete } from './SwipeToDelete'
 
 /** Past sessions, newest first — across all plans of the exercise. Sessions
  * finished within the last 24h stay editable (fat-finger fixes on the day);
- * everything older is a read-only fact. */
+ * everything older is a read-only fact. Any row swipes left to delete it,
+ * behind a confirm — the session then counts as skipped, never due again
+ * (see `deleteResult`). */
 export function HistoryList({
   results,
   unit,
@@ -40,18 +43,25 @@ export function HistoryList({
             const editable = isResultEditable(r, now, today)
             const Row = editable ? 'button' : 'div'
             return (
-              <Row
+              <SwipeToDelete
                 key={r.id}
-                class="session-row done"
-                style={stagger(i)}
-                onClick={editable ? () => setOpen(r.id) : undefined}
+                onDelete={() => {
+                  if (confirm('Delete this logged session for good? The plan skips it and moves on.'))
+                    deleteResult(r.id)
+                }}
               >
-                <span class="date">{formatDate(r.date, today)}</span>
-                <span class="sets-line">{actualsSummary(r.sets, unit)}</span>
-                <SessionBadges type={r.sessionType} />
-                {pm != null && <span class="max-hint">{maxHint(pm, unit)}</span>}
-                {editable && <span class="chev">›</span>}
-              </Row>
+                <Row
+                  class="session-row done"
+                  style={stagger(i)}
+                  onClick={editable ? () => setOpen(r.id) : undefined}
+                >
+                  <span class="date">{formatDate(r.date, today)}</span>
+                  <span class="sets-line">{actualsSummary(r.sets, unit)}</span>
+                  <SessionBadges type={r.sessionType} />
+                  {pm != null && <span class="max-hint">{maxHint(pm, unit)}</span>}
+                  {editable && <span class="chev">›</span>}
+                </Row>
+              </SwipeToDelete>
             )
           })}
         </section>

@@ -18,7 +18,8 @@ export interface SessionView {
   date: string
   week: number
   result?: Result
-  status: 'done' | 'due' | 'upcoming'
+  /** 'skipped': its Result was deleted — never due again, hidden from lists. */
+  status: 'done' | 'due' | 'upcoming' | 'skipped'
   /** From the generator, when its algorithm models one. */
   predictedMax?: number
   /** Per-set actuals checked off so far — only on the in-progress session. */
@@ -117,7 +118,12 @@ export function derivePlanView(plan: Plan, results: Result[], today: string): Pl
     if (r.planId === plan.id) resultByIndex.set(r.sessionIndex, r)
   }
 
-  let firstIncomplete = templates.findIndex((t) => !resultByIndex.has(t.index))
+  // A skipped session (its Result was deleted) is settled, not owed: the
+  // plan moves past it exactly as if it were done.
+  const skipped = new Set(plan.skipped ?? [])
+  let firstIncomplete = templates.findIndex(
+    (t) => !resultByIndex.has(t.index) && !skipped.has(t.index),
+  )
   if (firstIncomplete === -1) firstIncomplete = templates.length
   const completedToday = results.some((r) => r.date === today)
   // A behind-schedule plan's next base date is also in the past, so without
@@ -136,9 +142,11 @@ export function derivePlanView(plan: Plan, results: Result[], today: string): Pl
     // Only the first incomplete session can be due — logging is sequential.
     const status: SessionView['status'] = result
       ? 'done'
-      : i === firstIncomplete && dates[i] <= today
-        ? 'due'
-        : 'upcoming'
+      : skipped.has(t.index)
+        ? 'skipped'
+        : i === firstIncomplete && dates[i] <= today
+          ? 'due'
+          : 'upcoming'
     const sets = override ? override.sets : t.sets
     return {
       index: t.index,

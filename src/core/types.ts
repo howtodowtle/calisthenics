@@ -76,6 +76,9 @@ export interface Plan {
   overrides: Record<number, { sets: SetTemplate[] }>
   /** Sets checked off so far in the due session, at most one at a time. */
   progress?: SessionProgress
+  /** Sessions whose Result was deleted from History. They count as skipped:
+   * never due again, the plan moves on, the schedule around them stays put. */
+  skipped?: number[]
 }
 
 export interface ResultSet {
