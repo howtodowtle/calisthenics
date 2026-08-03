@@ -84,7 +84,7 @@ export function Overview({
             <section>{groups}</section>
           </div>
           <p class="dim overview-note">
-            Everything after today assumes you stay on plan — skip a session and the rest
+            Everything after today assumes you stay on plan — miss a session and the rest
             shifts forward.
           </p>
         </>

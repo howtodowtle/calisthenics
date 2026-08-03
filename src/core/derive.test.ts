@@ -64,9 +64,7 @@ describe('derivePlanView', () => {
   })
 
   it('treats a skipped session as settled: never due, schedule unmoved', () => {
-    // Session 2's Result was deleted (deleteResult marks it skipped). The
-    // plan owes session 3 next — session 2 must not come back as due, and
-    // the sessions around it keep their dates.
+    // Session 2's Result was deleted; deleteResult marked it skipped.
     const p: Plan = { ...plan, skipped: [2] }
     const view = derivePlanView(p, [result(1, '2026-07-20')], '2026-07-24')
     expect(view.sessions[1].status).toBe('skipped')
@@ -160,11 +158,11 @@ describe('partialToClose', () => {
     expect(partialToClose(unstamped, '2026-07-21')).toBeNull()
   })
 
-  it('returns null when no set was done at all — skipped, not partial', () => {
-    const skipped = partial({
+  it('returns null when no set was done at all — untouched, not partial', () => {
+    const untouched = partial({
       progress: { sessionIndex: 1, actuals: [null, null, null, null], startedOn: '2026-07-20' },
     })
-    expect(partialToClose(skipped, '2026-07-21')).toBeNull()
+    expect(partialToClose(untouched, '2026-07-21')).toBeNull()
   })
 
   it('returns null for a session index the generator no longer produces', () => {

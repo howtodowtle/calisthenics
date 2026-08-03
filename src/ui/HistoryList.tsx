@@ -9,8 +9,7 @@ import { SwipeToDelete } from './SwipeToDelete'
 /** Past sessions, newest first — across all plans of the exercise. Sessions
  * finished within the last 24h stay editable (fat-finger fixes on the day);
  * everything older is a read-only fact. Any row swipes left to delete it,
- * behind a confirm — the session then counts as skipped, never due again
- * (see `deleteResult`). */
+ * behind a confirm — the session then counts as skipped (see `deleteResult`). */
 export function HistoryList({
   results,
   unit,

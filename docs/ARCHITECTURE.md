@@ -49,7 +49,8 @@ Concrete consequences:
 | Log a max test | a `Result` + a `CalibrationPoint` | future targets bend toward your real max |
 | Edit a future day's sets | an override on the plan | that day shows your numbers, survives everything below |
 | Edit plan params mid-plan | new `params` | future re-derives from new params; past untouched |
-| Skip a few days | nothing | remaining schedule slides forward (computed, not stored) |
+| Miss a few days | nothing | remaining schedule slides forward (computed, not stored) |
+| Delete a logged session from History | its `Result` is erased; the index joins `plan.skipped` | the session counts as skipped — never due again, dates around it stay put |
 | Leave a session part-done overnight | its `progress` finalizes into a `Result` on next open | done sets keep their reps, missed sets record 0, the plan advances — a partial day still counts as trained |
 
 ## Data model (`src/core/types.ts`)
@@ -64,6 +65,8 @@ Plan              exerciseId + generatorId + params + startDate
                     — per-set check-offs of the due session; becomes a
                     Result (and is cleared) when the last set is logged,
                     or auto-closes once its day (startedOn) has passed
+                  + skipped?: [sessionIndex] — sessions whose Result was
+                    deleted; settled, never due again
 Result            completion snapshot (actuals editable for 24h, then frozen):
                   planId + sessionIndex + date + sessionType + completedAt
                   + sets: [{ target, isMinimum, actual }]
@@ -129,8 +132,8 @@ A partial session — some sets checked off, but the day ended before the rest �
 auto-closes on the next app open or midnight rollover: `finalizeStalePartials`
 (`store.ts`) commits `partialToClose` (`derive.ts`) as a Result dated to the
 workout day, with the missed sets at 0, and the plan advances as if fully done.
-A session with *no* sets done is skipped, not partial: nothing is stored and it
-rolls forward as before. A test whose measuring set was never attempted closes
+A session with *no* sets done is untouched, not partial: nothing is stored and
+it rolls forward as before. A test whose measuring set was never attempted closes
 without writing a calibration point, so a missed test can't bend the curve to 0.
 There is no backend, so "end of day" can only happen on next render.
 

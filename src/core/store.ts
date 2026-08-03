@@ -218,18 +218,17 @@ const progressOf = (p: Plan, sessionIndex: number, count: number): (number | nul
  * this rule so committing and editing a test can never disagree. */
 const testCalibrationActual = (sets: ResultSet[]): number => sets[0]?.actual ?? 0
 
-/** The plan and calibration point a Result owns, if any — only a max test
- * has one, keyed by sessionIndex on the result's plan. One owner for the
- * pairing rule, as `testCalibrationActual` owns the value rule. */
-function ownedCalibration(
-  d: AppData,
-  r: Result,
-): { plan: Plan; cal: CalibrationPoint } | null {
-  if (r.sessionType !== 'test') return null
-  const plan = d.plans.find((x) => x.id === r.planId)
-  const cal = plan?.calibrations.find((c) => c.sessionIndex === r.sessionIndex)
-  return plan && cal ? { plan, cal } : null
-}
+/** The plan a Result belongs to. */
+const planOf = (d: AppData, r: Result): Plan | undefined =>
+  d.plans.find((x) => x.id === r.planId)
+
+/** The calibration point a Result owns on its plan, if any — only a max
+ * test has one, keyed by its sessionIndex. One owner for the pairing rule,
+ * as `testCalibrationActual` owns the value rule. */
+const ownedCalibration = (plan: Plan | undefined, r: Result): CalibrationPoint | undefined =>
+  r.sessionType === 'test'
+    ? plan?.calibrations.find((c) => c.sessionIndex === r.sessionIndex)
+    : undefined
 
 /** Writes the immutable Result, folds test results into calibrations, and
  * clears any per-set progress the session accumulated during the day.
@@ -346,26 +345,26 @@ export function editResult(resultId: string, actuals: number[]): void {
     const r = d.results.find((x) => x.id === resultId)
     if (!r || !isResultEditable(r, Date.now(), todayISO())) return
     r.sets = r.sets.map((s, i) => ({ ...s, actual: actuals[i] ?? s.actual }))
-    const owned = ownedCalibration(d, r)
-    if (owned) owned.cal.actual = testCalibrationActual(r.sets)
+    const cal = ownedCalibration(planOf(d, r), r)
+    if (cal) cal.actual = testCalibrationActual(r.sets)
   })
 }
 
 /** Erases a logged session for good — the escape hatch for a session that
- * should never have been logged. The session counts as skipped, not owed:
- * the plan moves on and the schedule around it stays put (see Plan.skipped).
- * A deleted test takes its calibration point with it: a result that no
- * longer exists must not keep bending the curve. Destructive — confirm in
- * UI. */
+ * should never have been logged. The session counts as skipped, not owed
+ * (see Plan.skipped), and a deleted test takes its calibration point with
+ * it: a result that no longer exists must not keep bending the curve.
+ * Destructive — confirm in UI. */
 export function deleteResult(resultId: string): void {
   update((d) => {
     const r = d.results.find((x) => x.id === resultId)
     if (!r) return
     d.results = d.results.filter((x) => x.id !== resultId)
-    const owned = ownedCalibration(d, r)
-    if (owned) owned.plan.calibrations = owned.plan.calibrations.filter((c) => c !== owned.cal)
-    const p = d.plans.find((x) => x.id === r.planId)
-    if (p) (p.skipped ??= []).push(r.sessionIndex)
+    const plan = planOf(d, r)
+    if (!plan) return
+    const cal = ownedCalibration(plan, r)
+    if (cal) plan.calibrations = plan.calibrations.filter((c) => c !== cal)
+    if (!plan.skipped?.includes(r.sessionIndex)) (plan.skipped ??= []).push(r.sessionIndex)
   })
 }
 

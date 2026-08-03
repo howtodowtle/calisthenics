@@ -1,5 +1,5 @@
 import { addDays, daysBetween } from './dates'
-import { derivePlanView, type SessionView } from './derive'
+import { derivePlanView, isPending, type SessionView } from './derive'
 import { activePlanFor, resultsForExercise, sortedExercises } from './select'
 import type { AppData, Exercise } from './types'
 
@@ -15,7 +15,7 @@ import type { AppData, Exercise } from './types'
  *
  * Honesty note: only *today* is a fact. Later days are a projection that
  * assumes you keep up — `shiftedDates` slides the remaining schedule forward
- * from the first incomplete session, so skipping today moves everything after
+ * from the first incomplete session, so missing today moves everything after
  * it by a day. The UI says so; don't present these dates as appointments.
  */
 
@@ -59,7 +59,7 @@ export function deriveOverview(d: AppData, today: string): OverviewDay[] {
     const view = derivePlanView(plan, resultsForExercise(d, exercise.id), today)
 
     for (const session of view.sessions) {
-      if (session.status === 'done' || session.status === 'skipped') continue
+      if (!isPending(session)) continue
       // Clamping at 0 files an overdue session under today. Incomplete sessions
       // are date-ordered, so the first one past the window ends this plan's scan.
       const i = Math.max(0, daysBetween(today, session.date))

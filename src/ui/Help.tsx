@@ -31,7 +31,7 @@ export function Help() {
         The <strong>Overview</strong> tab is every exercise on one screen, day by day for the
         next week — what's on today, what's coming, and the sets each session asks for. Tap
         any row to jump to that exercise. Only today is fixed: the days after it assume you
-        stay on plan, and shift forward if you skip.
+        stay on plan, and shift forward if you miss a day.
       </p>
 
       <h2>Make it yours</h2>
