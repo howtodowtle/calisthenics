@@ -9,7 +9,8 @@ import { SwipeToDelete } from './SwipeToDelete'
 /** Past sessions, newest first — across all plans of the exercise. Sessions
  * finished within the last 24h stay editable (fat-finger fixes on the day);
  * everything older is a read-only fact. Any row swipes left to delete it,
- * behind a confirm — see `deleteResult` for what a deletion unwinds. */
+ * behind a confirm — the session then counts as skipped, never due again
+ * (see `deleteResult`). */
 export function HistoryList({
   results,
   unit,
@@ -45,7 +46,8 @@ export function HistoryList({
               <SwipeToDelete
                 key={r.id}
                 onDelete={() => {
-                  if (confirm("Delete this logged session? This can't be undone.")) deleteResult(r.id)
+                  if (confirm('Delete this logged session for good? The plan skips it and moves on.'))
+                    deleteResult(r.id)
                 }}
               >
                 <Row

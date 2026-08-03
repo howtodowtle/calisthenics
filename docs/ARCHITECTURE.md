@@ -19,8 +19,9 @@ Everything else follows from this.
   actuals move; targets, date and set count stay fixed, and a max test's
   calibration point follows the corrected number. After the window closes the
   Result is immutable — though it can still be deleted outright from History
-  (swipe left, confirm): the slot returns to the schedule as never done, and a
-  deleted test takes its calibration point with it.
+  (swipe left, confirm). Deletion means skipped, not owed: the session is
+  recorded in `Plan.skipped`, never comes due again, and the schedule around
+  it stays put; a deleted test takes its calibration point with it.
 - **Future = pure function.** The schedule you see for incomplete sessions is
   recomputed on every render:
 
@@ -117,6 +118,7 @@ importing either.
 | `dates.ts` | ISO-date arithmetic done at UTC noon so DST transitions can't skew day math. |
 
 Session state machine (in `derive.ts`): a session is `done` (has a Result),
+`skipped` (its Result was deleted — settled, hidden from lists, never due),
 `due` (the **first** incomplete session, date ≤ today — logging is strictly
 sequential, so at most one session is ever due), or `upcoming`. One session
 per day: once today's session is logged, the remaining schedule shifts from

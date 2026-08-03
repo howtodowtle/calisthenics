@@ -20,7 +20,7 @@ export function ScheduleList({
   exercise: Exercise
   today: string
 }) {
-  const upcoming = sessions.filter((s) => s.status !== 'done')
+  const upcoming = sessions.filter((s) => s.status !== 'done' && s.status !== 'skipped')
   const [open, setOpen] = useState<number | null>(null)
 
   if (upcoming.length === 0) return null

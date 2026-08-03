@@ -352,10 +352,11 @@ export function editResult(resultId: string, actuals: number[]): void {
 }
 
 /** Erases a logged session for good — the escape hatch for a session that
- * should never have been logged. On an active plan the slot simply has no
- * Result anymore, so it comes back as due and reschedules. A deleted test
- * takes its calibration point with it: a result that no longer exists must
- * not keep bending the curve. Destructive — confirm in UI. */
+ * should never have been logged. The session counts as skipped, not owed:
+ * the plan moves on and the schedule around it stays put (see Plan.skipped).
+ * A deleted test takes its calibration point with it: a result that no
+ * longer exists must not keep bending the curve. Destructive — confirm in
+ * UI. */
 export function deleteResult(resultId: string): void {
   update((d) => {
     const r = d.results.find((x) => x.id === resultId)
@@ -363,6 +364,8 @@ export function deleteResult(resultId: string): void {
     d.results = d.results.filter((x) => x.id !== resultId)
     const owned = ownedCalibration(d, r)
     if (owned) owned.plan.calibrations = owned.plan.calibrations.filter((c) => c !== owned.cal)
+    const p = d.plans.find((x) => x.id === r.planId)
+    if (p) (p.skipped ??= []).push(r.sessionIndex)
   })
 }
 
