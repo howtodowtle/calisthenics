@@ -35,15 +35,17 @@ export function baseDates(startDate: string, total: number, perWeek: number): st
 /**
  * Scheduled (display) date per session, 0-based array aligned with sessions.
  * `firstIncomplete` is the 0-based index of the first session without a
- * result; pass `total` when everything is done.
+ * result; pass `total` when everything is done. `earliest` is the first day
+ * that session may land on — today normally, tomorrow once today's session
+ * is already logged.
  */
 export function shiftedDates(
   base: string[],
   firstIncomplete: number,
-  today: string,
+  earliest: string,
 ): string[] {
   if (firstIncomplete >= base.length) return base
-  const gap = Math.max(0, daysBetween(base[firstIncomplete], today))
+  const gap = Math.max(0, daysBetween(base[firstIncomplete], earliest))
   if (gap === 0) return base
   return base.map((d, i) => (i < firstIncomplete ? d : addDays(d, gap)))
 }

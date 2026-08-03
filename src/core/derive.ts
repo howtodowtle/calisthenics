@@ -1,3 +1,4 @@
+import { addDays } from './dates'
 import { getGenerator } from './generators'
 import { baseDates, perWeekOf, shiftedDates, weekOf } from './schedule'
 import type { CalibrationPoint, Plan, Result, SessionProgress, SessionType, SetTemplate } from './types'
@@ -116,10 +117,15 @@ export function derivePlanView(plan: Plan, results: Result[], today: string): Pl
 
   let firstIncomplete = templates.findIndex((t) => !resultByIndex.has(t.index))
   if (firstIncomplete === -1) firstIncomplete = templates.length
+  const completedToday = results.some((r) => r.date === today)
+  // One session per day: when today's training is already logged, the next
+  // session lands tomorrow at the earliest. Otherwise a behind-schedule plan
+  // (next base date also in the past) would mark the next session due the
+  // moment this one completes.
   const dates = shiftedDates(
     baseDates(plan.startDate, templates.length, perWeek),
     firstIncomplete,
-    today,
+    completedToday ? addDays(today, 1) : today,
   )
 
   const sessions: SessionView[] = templates.map((t, i) => {
@@ -159,7 +165,7 @@ export function derivePlanView(plan: Plan, results: Result[], today: string): Pl
     next,
     endDate: dates[dates.length - 1],
     completedCount: resultByIndex.size,
-    completedToday: results.some((r) => r.date === today),
+    completedToday,
   }
 }
 
