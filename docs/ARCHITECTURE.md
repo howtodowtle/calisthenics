@@ -24,7 +24,7 @@ Everything else follows from this.
 
   ```
   sessions = overrides ⊕ generator.generate(plan.params, plan.calibrations)
-  dates    = shiftForward(baseDates(plan.startDate, sessionsPerWeek), results, today)
+  dates    = shiftedDates(baseDates(plan.startDate, sessionsPerWeek), firstIncomplete, earliest)
   ```
 
 - **Storage holds only inputs**: params, calibrations, overrides, results. Never
@@ -108,7 +108,7 @@ importing either.
 | `store.ts` | One `@preact/signals` signal over the whole `AppData` blob; every mutation goes through `update()` which clones, mutates, persists to localStorage. All mutations live here (`createPlan`, `completeSession`, `logSet`, `setOverride`, …) — UI components never touch storage directly. Re-exports `select.ts`. |
 | `select.ts` | Pure `AppData` queries with one owner each: `sortedExercises`, `activePlanFor`, `hasActivePlan`, `resultsForExercise`, `dueExerciseCount`. Separate from `store.ts` so nothing has to import the storage singleton to read the blob. |
 | `derive.ts` | `derivePlanView(plan, results, today)` — merges generator output, overrides, results and shifted dates into `SessionView[]` plus `due` / `next` / `endDate`. The single source for "what does this plan look like right now". |
-| `overview.ts` | `deriveOverview(data, today, days)` — the week ahead across *all* exercises with an active plan, as one `OverviewDay` per calendar day (rest days included, empty). Completed sessions drop out; an overdue session files under today. Only today is a fact: later days assume you stay on plan, because `shiftedDates` moves them when you don't. |
+| `overview.ts` | `deriveOverview(data, today)` — the week ahead across *all* exercises with an active plan, as one `OverviewDay` per calendar day (rest days included, empty). Completed sessions drop out; an overdue session files under today. Only today is a fact: later days assume you stay on plan, because `shiftedDates` moves them when you don't. |
 | `schedule.ts` | `baseDates` spreads sessions evenly per week from the start date (3/wk → offsets 0, 2, 4). `shiftedDates` slides the remaining schedule forward so the first incomplete session lands no earlier than a given day. The single place a smarter rescheduler would plug in. |
 | `generators/` | The algorithm registry. See below. |
 | `stats.ts` | Streak (sessions ≤ 7 days apart, ending within 7 days of today) and lifetime totals, computed across active *and* archived plans of an exercise. |
@@ -117,9 +117,9 @@ importing either.
 Session state machine (in `derive.ts`): a session is `done` (has a Result),
 `due` (the **first** incomplete session, date ≤ today — logging is strictly
 sequential, so at most one session is ever due), or `upcoming`. One session
-per day: once a session of the exercise is logged today, the remaining
-schedule shifts from *tomorrow*, so finishing a behind-schedule session
-never makes the next one due the same day.
+per day: once today's session is logged, the remaining schedule shifts from
+*tomorrow*, so finishing a behind-schedule session never makes the next one
+due the same day.
 
 A partial session — some sets checked off, but the day ended before the rest —
 auto-closes on the next app open or midnight rollover: `finalizeStalePartials`
