@@ -6,10 +6,11 @@ import { addDays, daysBetween } from './dates'
  * Base layout: sessions spread evenly within each week from the plan start
  * date (3/week → day offsets 0, 2, 4 — a Mon/Wed/Fri feel).
  *
- * Shift-forward: if the first incomplete session's base date is in the past,
- * the entire remaining schedule slides forward by that gap (the end date
- * moves). Pure function of (results, today); nothing is stored. This function
- * is the single place a smarter rescheduler would plug in later.
+ * Shift-forward: the remaining schedule slides forward so the first
+ * incomplete session lands no earlier than a caller-chosen day (the end date
+ * moves). The caller owns the policy of what that day is — `derive.ts` floors
+ * it at tomorrow once today's session is logged. Nothing is stored;
+ * `shiftedDates` is the single place a smarter rescheduler would plug in later.
  */
 
 /**
@@ -35,15 +36,16 @@ export function baseDates(startDate: string, total: number, perWeek: number): st
 /**
  * Scheduled (display) date per session, 0-based array aligned with sessions.
  * `firstIncomplete` is the 0-based index of the first session without a
- * result; pass `total` when everything is done.
+ * result; pass `total` when everything is done. `earliest` is the first day
+ * that session may land on — the caller decides what that is.
  */
 export function shiftedDates(
   base: string[],
   firstIncomplete: number,
-  today: string,
+  earliest: string,
 ): string[] {
   if (firstIncomplete >= base.length) return base
-  const gap = Math.max(0, daysBetween(base[firstIncomplete], today))
+  const gap = Math.max(0, daysBetween(base[firstIncomplete], earliest))
   if (gap === 0) return base
   return base.map((d, i) => (i < firstIncomplete ? d : addDays(d, gap)))
 }

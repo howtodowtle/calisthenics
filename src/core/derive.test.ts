@@ -50,6 +50,19 @@ describe('derivePlanView', () => {
     expect(view.endDate).toBe('2026-10-23')
   })
 
+  it('keeps the next session off today after logging a behind-schedule session', () => {
+    // Session 1 (due 07-20) was completed late, on 07-26. Session 2's base
+    // date (07-22) is also in the past — but it must not become due the moment
+    // session 1 completes: one session per day, the next lands tomorrow.
+    const view = derivePlanView(plan, [result(1, '2026-07-26')], '2026-07-26')
+    expect(view.completedToday).toBe(true)
+    expect(view.due).toBeNull()
+    expect(view.next?.index).toBe(2)
+    expect(view.next?.date).toBe('2026-07-27')
+    // The whole remaining schedule shifts from tomorrow, not today.
+    expect(view.endDate).toBe('2026-10-24')
+  })
+
   it('applies overrides and flags the session as edited', () => {
     const edited: Plan = {
       ...plan,
