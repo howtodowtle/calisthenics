@@ -229,7 +229,7 @@ update re-renders everything; at this data size that's the simplest correct mode
 | `ExerciseTab.tsx` | Composition: today card → stats → chart → schedule → history |
 | `TodayCard.tsx` | Per-set logging: tap a set when you've done it (tap again to undo); the last set completes the session. Max tests and minimum sets prompt for actual numbers; one button logs everything remaining; "Adjust reps" edits today's targets as an override *without* logging the session |
 | `ScheduleList.tsx` | Upcoming sessions; tapping a row opens an inline editor that stores an override |
-| `HistoryList.tsx` | Past Results, newest first; rows finished within 24h are tappable to correct the logged actuals. Swiping a row left reveals Delete; releasing past the trigger confirms, then erases the Result (`SwipeToDelete.tsx` owns the gesture) |
+| `HistoryList.tsx` | Past Results, newest first; rows finished within 24h are tappable to correct the logged actuals. Rows swipe left to delete their Result behind a confirm (`SwipeToDelete.tsx` owns the gesture) |
 | `Chart.tsx` | SVG progress chart — planned volume line, done dots, test diamonds, tap/drag crosshair. Colors are `--viz-*` tokens validated for both themes |
 | `Settings.tsx` | Exercise CRUD, plan lifecycle (create / edit params / stop / delete), self-rendering param forms, JSON backup |
 

@@ -1,27 +1,31 @@
 import type { ComponentChildren } from 'preact'
 import { useRef, useState } from 'preact/hooks'
 
-/** Travel that arms the delete on release. */
+/** Travel that arms the delete on release. Must exceed the action strip's
+ * label inset + width so "Delete" reads fully before it arms. */
 const TRIGGER_PX = 88
 /** Hard stop a little past the trigger, for a sense of pull. */
 const MAX_PX = 132
 /** Movement below this is a tap, not a drag. */
 const SLOP_PX = 8
+/** How long after a drag a click is still the drag's echo, not a new tap. */
+const CLICK_GUARD_MS = 350
 
 /**
  * Wraps a list row so dragging it left reveals a red "Delete" strip;
- * releasing past the trigger asks for confirmation (the row holds its
- * position under the dialog), anything less snaps back. The first clear
- * movement decides the gesture: mostly vertical hands it to the scroller
- * untouched (`touch-action: pan-y` does the same for the browser), and a
- * drag suppresses the row's own click so a swipe never opens the row.
+ * releasing past the trigger fires `onDelete`, anything less snaps back.
+ * The caller owns the warning — `if (confirm(...))` at the call site, like
+ * every destructive action here — and a blocking dialog holds the row
+ * mid-swipe beneath it, since nothing repaints before the handler returns.
+ * The first clear movement decides the gesture: mostly vertical hands it to
+ * the scroller untouched (`touch-action: pan-y` does the same for the
+ * browser), and a drag suppresses the row's own click so a swipe never
+ * opens the row.
  */
 export function SwipeToDelete({
-  confirmText,
   onDelete,
   children,
 }: {
-  confirmText: string
   onDelete: () => void
   children: ComponentChildren
 }) {
@@ -60,19 +64,20 @@ export function SwipeToDelete({
         setDx(Math.max(-MAX_PX, Math.min(0, mx)))
       }}
       onPointerUp={() => {
-        if (!start.current) return
-        if (dragging) {
-          dragEndedAt.current = Date.now()
-          const confirmed = dx <= -TRIGGER_PX && confirm(confirmText)
-          settle()
-          if (confirmed) onDelete()
-        } else {
+        if (!dragging) {
           start.current = null
+          return
         }
+        const past = dx <= -TRIGGER_PX
+        settle()
+        if (past) onDelete()
+        // Stamped after onDelete: its confirm blocks, and the click to
+        // suppress lands right after the dialog closes.
+        dragEndedAt.current = Date.now()
       }}
       onPointerCancel={settle}
       onClickCapture={(e) => {
-        if (Date.now() - dragEndedAt.current < 350) {
+        if (Date.now() - dragEndedAt.current < CLICK_GUARD_MS) {
           e.preventDefault()
           e.stopPropagation()
         }
@@ -83,7 +88,11 @@ export function SwipeToDelete({
       </div>
       <div
         class="swipe-content"
-        style={{ transform: `translateX(${dx}px)`, transition: dragging ? 'none' : undefined }}
+        style={{
+          transform: `translateX(${dx}px)`,
+          transition: dragging ? 'none' : undefined,
+          willChange: dragging ? 'transform' : undefined,
+        }}
       >
         {children}
       </div>

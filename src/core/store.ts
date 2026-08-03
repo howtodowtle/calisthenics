@@ -3,8 +3,10 @@ import { todayISO } from './dates'
 import { effectiveSession, fitProgress, isResultEditable, isStalePartial, partialToClose } from './derive'
 import type {
   AppData,
+  CalibrationPoint,
   Exercise,
   Plan,
+  Result,
   ResultSet,
   SessionType,
   SetTemplate,
@@ -216,6 +218,19 @@ const progressOf = (p: Plan, sessionIndex: number, count: number): (number | nul
  * this rule so committing and editing a test can never disagree. */
 const testCalibrationActual = (sets: ResultSet[]): number => sets[0]?.actual ?? 0
 
+/** The plan and calibration point a Result owns, if any — only a max test
+ * has one, keyed by sessionIndex on the result's plan. One owner for the
+ * pairing rule, as `testCalibrationActual` owns the value rule. */
+function ownedCalibration(
+  d: AppData,
+  r: Result,
+): { plan: Plan; cal: CalibrationPoint } | null {
+  if (r.sessionType !== 'test') return null
+  const plan = d.plans.find((x) => x.id === r.planId)
+  const cal = plan?.calibrations.find((c) => c.sessionIndex === r.sessionIndex)
+  return plan && cal ? { plan, cal } : null
+}
+
 /** Writes the immutable Result, folds test results into calibrations, and
  * clears any per-set progress the session accumulated during the day.
  * A null actual means the set was never attempted (an auto-closed partial):
@@ -331,12 +346,8 @@ export function editResult(resultId: string, actuals: number[]): void {
     const r = d.results.find((x) => x.id === resultId)
     if (!r || !isResultEditable(r, Date.now(), todayISO())) return
     r.sets = r.sets.map((s, i) => ({ ...s, actual: actuals[i] ?? s.actual }))
-    if (r.sessionType === 'test') {
-      const cal = d.plans
-        .find((x) => x.id === r.planId)
-        ?.calibrations.find((c) => c.sessionIndex === r.sessionIndex)
-      if (cal) cal.actual = testCalibrationActual(r.sets)
-    }
+    const owned = ownedCalibration(d, r)
+    if (owned) owned.cal.actual = testCalibrationActual(r.sets)
   })
 }
 
@@ -350,10 +361,8 @@ export function deleteResult(resultId: string): void {
     const r = d.results.find((x) => x.id === resultId)
     if (!r) return
     d.results = d.results.filter((x) => x.id !== resultId)
-    if (r.sessionType === 'test') {
-      const p = d.plans.find((x) => x.id === r.planId)
-      if (p) p.calibrations = p.calibrations.filter((c) => c.sessionIndex !== r.sessionIndex)
-    }
+    const owned = ownedCalibration(d, r)
+    if (owned) owned.plan.calibrations = owned.plan.calibrations.filter((c) => c !== owned.cal)
   })
 }
 

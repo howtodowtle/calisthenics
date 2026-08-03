@@ -30,6 +30,7 @@
   --accent: #efe8dd;
   --accent-foreground: #24201b;
   --destructive: #b42318;
+  --destructive-foreground: #fff;
   --border: #e7ded2;
   --input: #e7ded2;
   --ring: #b0492f;
@@ -70,6 +71,7 @@
   --accent: #362c24;
   --accent-foreground: #ede4d8;
   --destructive: #e5544b;
+  --destructive-foreground: #fff;
   --border: #382e26;
   --input: #3e332a;
   --ring: #d97757;
@@ -456,8 +458,9 @@ button.set-chip:disabled {
 
 /* ---- swipe to delete (history rows) ----
    Each row sits in a .swipe-row wrapper over a red action strip; dragging
-   left slides the opaque row off it. The wrapper makes the row its only
-   child, so the card's between-row rules move up to the wrappers. */
+   left slides the opaque row off it. The row is its wrapper's only child, so
+   the existing .session-row:last-child rule strips the row's own border and
+   the wrapper carries the separator instead. */
 
 .swipe-row {
   position: relative;
@@ -467,15 +470,11 @@ button.set-chip:disabled {
   touch-action: pan-y;
 }
 
-.swipe-row .session-row {
-  border-bottom: none;
-}
-
 .swipe-row:last-child {
   border-bottom: none;
 }
 
-.swipe-row .swipe-action {
+.swipe-action {
   position: absolute;
   inset: 0;
   display: flex;
@@ -483,17 +482,16 @@ button.set-chip:disabled {
   justify-content: flex-end;
   padding-right: 20px;
   background: var(--destructive);
-  color: #fff;
+  color: var(--destructive-foreground);
   font-size: 0.82rem;
   font-weight: 600;
 }
 
-.swipe-row .swipe-content {
+.swipe-content {
   position: relative;
   /* Opaque over the action strip: only the vacated part shows red. */
   background: var(--card);
   transition: transform var(--dur-fast) ease;
-  will-change: transform;
 }
 
 /* ---- overview (the week at a glance) ----
