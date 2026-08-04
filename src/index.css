@@ -131,6 +131,12 @@ h2 {
   font-size: 0.85rem;
 }
 
+/* Deltas on .dim for the Help footer's build stamp. */
+.build-stamp {
+  font-size: 0.78rem;
+  text-align: center;
+}
+
 .sets-line {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;

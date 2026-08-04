@@ -57,6 +57,8 @@ export function Help() {
         A personal project, built for my own training. Free to use, but not a product — no
         support, no guarantees.
       </p>
+
+      <p class="dim build-stamp">Build {__BUILD__}</p>
     </>
   )
 }
