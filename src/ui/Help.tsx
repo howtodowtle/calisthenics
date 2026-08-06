@@ -34,6 +34,15 @@ export function Help() {
         stay on plan, and shift forward if you miss a day.
       </p>
 
+      <h2>The streak</h2>
+      <p>
+        The 🔥 streak on each exercise counts consecutive sessions without too long a break.
+        How long a break is allowed adapts to your plan: twice the average time between
+        sessions, but never more than 7 days. At 3 sessions per week that's about 4½ days;
+        at 2 per week or fewer it's the full 7. Let more time pass and the streak resets —
+        the session count and lifetime totals keep everything you've ever done.
+      </p>
+
       <h2>Make it yours</h2>
       <p>
         Tap any upcoming session to edit its sets. Add your own exercises (anything counted in

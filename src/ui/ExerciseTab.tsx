@@ -20,7 +20,7 @@ export function ExerciseTab({
   const data = db.value
   const activePlan = activePlanFor(data, exercise.id)
   const results = resultsForExercise(data, exercise.id)
-  const stats = exerciseStats(results, today)
+  const stats = exerciseStats(results, data.plans, today)
   const view = activePlan ? derivePlanView(activePlan, results, today) : null
   // History rows of the active plan show the max they were planned around.
   const predictedMax = view ? predictedMaxIndex(view) : undefined

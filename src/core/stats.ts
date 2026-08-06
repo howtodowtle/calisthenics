@@ -1,16 +1,27 @@
 import { daysBetween } from './dates'
-import type { Result } from './types'
+import { perWeekOf } from './schedule'
+import type { Plan, Result } from './types'
 
 export interface ExerciseStats {
   sessionsDone: number
   /** Lifetime sum of actuals (reps or seconds) across all plans. */
   totalActual: number
   /**
-   * Session streak: consecutive completed sessions, each no more than 7 days
-   * after the previous, still alive only if the last one is ≤7 days ago.
+   * Session streak: consecutive completed sessions, each within the streak
+   * window of the previous, still alive only if the last one is within its
+   * window of today. See `streakWindow` for the window; each gap is judged
+   * by the plan of the session that opened it.
    */
   streak: number
 }
+
+/**
+ * Days a streak survives after a session before it breaks: twice the plan's
+ * average session spacing (2 × 7/sessionsPerWeek), capped at 7. At 3/week
+ * that's ~4.67 days; at 2/week or less the cap keeps it at 7.
+ */
+export const streakWindow = (plan: Plan | undefined): number =>
+  plan ? Math.min(7, 2 * (7 / perWeekOf(plan.params))) : 7
 
 /** Sum of actuals across a set list. */
 export const sumActual = (sets: { actual: number }[]): number =>
@@ -25,14 +36,16 @@ export const sumTarget = (sets: { target: number }[]): number =>
  * absorbs float noise so exact curve values stay exact. */
 export const flooredMax = (value: number): number => Math.max(1, Math.floor(value + 1e-9))
 
-/** `results` must already be filtered to one exercise (any of its plans). */
-export function exerciseStats(results: Result[], today: string): ExerciseStats {
+/** `results` must already be filtered to one exercise (any of its plans);
+ * `plans` is any list containing the plans those results belong to. */
+export function exerciseStats(results: Result[], plans: Plan[], today: string): ExerciseStats {
+  const windows = new Map(plans.map((p) => [p.id, streakWindow(p)]))
   const sorted = [...results].sort((a, b) => a.date.localeCompare(b.date))
   const totalActual = sorted.reduce((sum, r) => sum + sumActual(r.sets), 0)
   let streak = 0
   for (let i = sorted.length - 1; i >= 0; i--) {
     const nextDate = i === sorted.length - 1 ? today : sorted[i + 1].date
-    if (daysBetween(sorted[i].date, nextDate) <= 7) streak++
+    if (daysBetween(sorted[i].date, nextDate) <= (windows.get(sorted[i].planId) ?? 7)) streak++
     else break
   }
   return { sessionsDone: sorted.length, totalActual, streak }
