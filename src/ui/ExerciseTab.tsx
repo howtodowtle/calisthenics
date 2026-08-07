@@ -1,3 +1,4 @@
+import { useState } from 'preact/hooks'
 import { derivePlanView, predictedMaxIndex } from '../core/derive'
 import { exerciseStats } from '../core/stats'
 import { activePlanFor, db, plansForExercise, resultsForExercise } from '../core/store'
@@ -25,6 +26,15 @@ export function ExerciseTab({
   // History rows of the active plan show the max they were planned around.
   const predictedMax = view ? predictedMaxIndex(view) : undefined
 
+  // "Do it today": the next session, pulled forward by the rest-card button.
+  // This state only bridges the gap until the first set is logged — from then
+  // on the session is due in its own right (see `statusOf` in derive.ts).
+  // Keyed by plan+session so completing the early session falls back to the
+  // rest card (with a fresh offer) instead of silently chaining into the next.
+  const [earlyKey, setEarlyKey] = useState<string | null>(null)
+  const nextKey = view?.next ? `${view.plan.id}:${view.next.index}` : null
+  const early = view && !view.due && nextKey && earlyKey === nextKey ? view.next : null
+
   return (
     <>
       <h1>
@@ -46,8 +56,22 @@ export function ExerciseTab({
               exercise={exercise}
               today={today}
             />
+          ) : early ? (
+            <TodayCard
+              key={nextKey}
+              session={early}
+              planId={view.plan.id}
+              exercise={exercise}
+              today={today}
+              onDismiss={() => setEarlyKey(null)}
+            />
           ) : (
-            <RestCard next={view.next} today={today} completedToday={view.completedToday} />
+            <RestCard
+              next={view.next}
+              today={today}
+              completedToday={view.completedToday}
+              onStartEarly={nextKey ? () => setEarlyKey(nextKey) : undefined}
+            />
           )}
 
           <div class="stats-row">

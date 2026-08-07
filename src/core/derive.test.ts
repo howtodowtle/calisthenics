@@ -63,6 +63,35 @@ describe('derivePlanView', () => {
     expect(view.endDate).toBe('2026-10-24')
   })
 
+  it('makes a future session due once a set is checked off (started early)', () => {
+    // Session 2 is scheduled for 07-22; on 07-21 the user pulled it forward
+    // and logged a set — it must stay on the Today card across reloads.
+    const p: Plan = { ...plan, progress: { sessionIndex: 2, actuals: [5, null], startedOn: '2026-07-21' } }
+    const view = derivePlanView(p, [result(1, '2026-07-20')], '2026-07-21')
+    expect(view.due?.index).toBe(2)
+    expect(view.due?.progress?.[0]).toBe(5)
+  })
+
+  it('never promotes a session past the first incomplete one, progress or not', () => {
+    const p: Plan = { ...plan, progress: { sessionIndex: 3, actuals: [5], startedOn: '2026-07-21' } }
+    const view = derivePlanView(p, [result(1, '2026-07-20')], '2026-07-21')
+    expect(view.due).toBeNull()
+    expect(view.sessions[2].status).toBe('upcoming')
+  })
+
+  it('leaves the rest of the schedule untouched after an early double day', () => {
+    // Session 1 done on its day (07-20), then session 2 (scheduled 07-22)
+    // pulled forward and completed the same day. Nothing else moves, and
+    // nothing new becomes due — doing more is explicit, never automatic.
+    const done = [result(1, '2026-07-20'), result(2, '2026-07-20')]
+    const view = derivePlanView(plan, done, '2026-07-20')
+    expect(view.completedToday).toBe(true)
+    expect(view.due).toBeNull()
+    expect(view.next?.index).toBe(3)
+    expect(view.next?.date).toBe('2026-07-24') // Friday, exactly as scheduled
+    expect(view.endDate).toBe('2026-10-19') // the base end — no shift
+  })
+
   it('treats a skipped session as settled: never due, schedule unmoved', () => {
     // Session 2's Result was deleted; deleteResult marked it skipped.
     const p: Plan = { ...plan, skipped: [2] }

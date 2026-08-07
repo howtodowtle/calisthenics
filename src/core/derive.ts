@@ -102,7 +102,8 @@ export function partialToClose(
 export interface PlanView {
   plan: Plan
   sessions: SessionView[]
-  /** Session for the Today card: first incomplete one whose date ≤ today. */
+  /** Session for the Today card: first incomplete one whose date ≤ today —
+   * or with sets already checked off (started early, see `statusOf`). */
   due: SessionView | null
   /** Next upcoming session when nothing is due. */
   next: SessionView | null
@@ -134,7 +135,8 @@ export function derivePlanView(plan: Plan, results: Result[], today: string): Pl
   const completedToday = results.some((r) => r.date === today)
   // A behind-schedule plan's next base date is also in the past, so without
   // this floor the next session would fall due the moment today's completes —
-  // sessions are one per day.
+  // one session per day unless the user explicitly pulls the next one forward
+  // (see `statusOf`: checked-off sets make it due whatever its date).
   const earliest = completedToday ? addDays(today, 1) : today
   const dates = shiftedDates(
     baseDates(plan.startDate, templates.length, perWeek),
@@ -147,7 +149,11 @@ export function derivePlanView(plan: Plan, results: Result[], today: string): Pl
     if (result) return 'done'
     if (skipped.includes(index)) return 'skipped' // settled, not owed
     // Only the first incomplete session can be due — logging is sequential.
-    if (i === firstIncomplete && dates[i] <= today) return 'due'
+    // Checked-off sets also make it due ahead of its date: a session pulled
+    // forward ("Do it today") must keep its card across reloads instead of
+    // hiding the progress behind the rest card again.
+    if (i === firstIncomplete && (dates[i] <= today || plan.progress?.sessionIndex === index))
+      return 'due'
     return 'upcoming'
   }
 
