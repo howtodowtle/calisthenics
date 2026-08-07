@@ -22,6 +22,10 @@ export function perWeekOf(params: Record<string, number>): number {
   return Math.min(7, Math.max(1, Math.round(params.sessionsPerWeek ?? 3)))
 }
 
+/** Average days between sessions a params blob asks for — the cadence
+ * `baseDates` approximates with its integer day offsets. */
+export const avgGapOf = (params: Record<string, number>): number => 7 / perWeekOf(params)
+
 /** 0-based week a session index falls in. */
 export const weekOf = (i: number, perWeek: number): number => Math.floor(i / perWeek)
 

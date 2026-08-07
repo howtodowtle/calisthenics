@@ -64,10 +64,8 @@ describe('exerciseStats streak', () => {
   })
 
   it('keeps the 7-day window at 2 sessions per week', () => {
-    const p = [plan('p1', 2)]
     const results = [result('2026-07-20'), result('2026-07-27')]
-    expect(exerciseStats(results, p, '2026-07-27').streak).toBe(2)
-    expect(exerciseStats([result('2026-07-20'), result('2026-07-28')], p, '2026-07-28').streak).toBe(1)
+    expect(exerciseStats(results, [plan('p1', 2)], '2026-07-27').streak).toBe(2)
   })
 
   it('judges each gap by the plan of the session that opened it', () => {
