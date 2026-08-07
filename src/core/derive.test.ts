@@ -85,10 +85,26 @@ describe('derivePlanView', () => {
     expect(view.due?.date).toBe('2026-07-21')
   })
 
+  it('keeps a pulled session due today when the floor schedules it tomorrow ("go again")', () => {
+    // Session 1 was completed late, today (07-26); the one-per-day floor slides
+    // session 2 to tomorrow. Pulling it the same day overrides: startedOn wins,
+    // while scheduledDate keeps the floor's projection honest.
+    const p: Plan = {
+      ...plan,
+      progress: { sessionIndex: 2, actuals: [null, null, null, null], startedOn: '2026-07-26' },
+    }
+    const view = derivePlanView(p, [result(1, '2026-07-26')], '2026-07-26')
+    expect(view.completedToday).toBe(true)
+    expect(view.due?.index).toBe(2)
+    expect(view.due?.date).toBe('2026-07-26')
+    expect(view.due?.scheduledDate).toBe('2026-07-27')
+  })
+
   it('clamps a future startedOn to today, so a clock moved backward cannot lock the session out', () => {
     // Pulled forward just after midnight, then the device day rolled back
     // (timezone travel): without the clamp the session is neither due nor
-    // sweepable — invisible and unloggable until the calendar catches up.
+    // sweepable — stuck upcoming, blocking a new pull, until the calendar
+    // catches up.
     const p: Plan = { ...plan, progress: { sessionIndex: 2, actuals: [5, null], startedOn: '2026-07-22' } }
     const view = derivePlanView(p, [result(1, '2026-07-20')], '2026-07-21')
     expect(view.due?.index).toBe(2)
@@ -104,9 +120,9 @@ describe('derivePlanView', () => {
   })
 
   it('leaves the rest of the schedule untouched after an early double day', () => {
-    // Session 1 done on its day (07-20), then session 2 (scheduled 07-22)
-    // pulled forward and completed the same day. Nothing else moves, and
-    // nothing new becomes due — doing more is explicit, never automatic.
+    // Two Results on one day — the state a completed pull leaves behind (the
+    // pull record itself is gone by now). Nothing else moves, and nothing new
+    // becomes due — doing more is explicit, never automatic.
     const done = [result(1, '2026-07-20'), result(2, '2026-07-20')]
     const view = derivePlanView(plan, done, '2026-07-20')
     expect(view.completedToday).toBe(true)

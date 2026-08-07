@@ -25,8 +25,9 @@ export function Help() {
         forward. Started a session but didn't finish? It closes overnight with the sets you
         did — the rest count as 0 — and the plan moves on. Feeling strong? On a rest day —
         or right after finishing a session — the card offers the next one:{' '}
-        <strong>Do it today</strong> pulls just that session forward, and the rest of the
-        plan stays where it is.
+        <strong>Do it today</strong> pulls just that session forward; nothing else moves
+        up, though if you had fallen behind, doing sessions early lets the plan catch
+        back up.
       </p>
 
       <h2>The week ahead</h2>

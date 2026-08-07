@@ -171,7 +171,12 @@ export function createPlan(
 export function updatePlanParams(planId: string, params: Record<string, number>): void {
   update((d) => {
     const p = d.plans.find((x) => x.id === planId)
-    if (p) p.params = params
+    if (!p) return
+    p.params = params
+    // Progress for a session the new params no longer produce is orphaned —
+    // it could never close into a Result, only linger and block the next pull
+    // until the midnight sweep. Drop it now.
+    if (p.progress && !effectiveSession(p, p.progress.sessionIndex)) delete p.progress
   })
 }
 
