@@ -46,6 +46,8 @@ export interface SessionTemplate {
  * Per-set check-offs for the one session currently in progress — sets can be
  * spread across the day (one in the morning, two at lunch, …). Cleared the
  * moment the last set lands and the session becomes an immutable Result.
+ * Also the pull-forward marker: "Do it today" stores this with every actual
+ * null, which dates the session today and makes it due (see derive.ts).
  */
 export interface SessionProgress {
   sessionIndex: number

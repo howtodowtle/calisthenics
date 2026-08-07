@@ -63,13 +63,26 @@ describe('derivePlanView', () => {
     expect(view.endDate).toBe('2026-10-24')
   })
 
-  it('makes a future session due once a set is checked off (started early)', () => {
+  it('dates a started session by its first check-off, making it due early', () => {
     // Session 2 is scheduled for 07-22; on 07-21 the user pulled it forward
-    // and logged a set — it must stay on the Today card across reloads.
+    // and logged a set — it happens today, and stays due across reloads.
     const p: Plan = { ...plan, progress: { sessionIndex: 2, actuals: [5, null], startedOn: '2026-07-21' } }
     const view = derivePlanView(p, [result(1, '2026-07-20')], '2026-07-21')
     expect(view.due?.index).toBe(2)
     expect(view.due?.progress?.[0]).toBe(5)
+    expect(view.due?.date).toBe('2026-07-21') // the day it is happening
+    expect(view.due?.scheduledDate).toBe('2026-07-22') // the day the plan said
+  })
+
+  it('pull-forward intent alone (started, no sets yet) makes the session due', () => {
+    // "Do it today" stores empty progress; nothing else distinguishes a pull.
+    const p: Plan = {
+      ...plan,
+      progress: { sessionIndex: 2, actuals: [null, null, null, null], startedOn: '2026-07-21' },
+    }
+    const view = derivePlanView(p, [result(1, '2026-07-20')], '2026-07-21')
+    expect(view.due?.index).toBe(2)
+    expect(view.due?.date).toBe('2026-07-21')
   })
 
   it('never promotes a session past the first incomplete one, progress or not', () => {
@@ -77,6 +90,7 @@ describe('derivePlanView', () => {
     const view = derivePlanView(p, [result(1, '2026-07-20')], '2026-07-21')
     expect(view.due).toBeNull()
     expect(view.sessions[2].status).toBe('upcoming')
+    expect(view.sessions[2].date).toBe('2026-07-24') // keeps its scheduled day
   })
 
   it('leaves the rest of the schedule untouched after an early double day', () => {

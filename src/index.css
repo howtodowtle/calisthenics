@@ -333,6 +333,7 @@ button.set-chip:disabled {
   font-size: 1.05rem;
 }
 
+.rest-card .btn,
 .empty .btn {
   margin-top: 16px;
 }
