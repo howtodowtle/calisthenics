@@ -143,6 +143,17 @@ describe('derivePlanView', () => {
     expect(view.sessions[0].progress).toBeUndefined()
   })
 
+  it('derives a fully completed plan: nothing due, nothing next', () => {
+    // Regression: with no progress and no incomplete session, the started-early
+    // lookup compared undefined === undefined and crashed on plan completion.
+    const total = derivePlanView(plan, [], '2026-07-20').sessions.length
+    const done = Array.from({ length: total }, (_, i) => result(i + 1, '2026-07-20'))
+    const view = derivePlanView(plan, done, '2026-10-20')
+    expect(view.due).toBeNull()
+    expect(view.next).toBeNull()
+    expect(view.completedCount).toBe(total)
+  })
+
   it('keeps completed sessions as facts when params change', () => {
     const done = [result(1, '2026-07-20'), result(2, '2026-07-22')]
     const changed: Plan = { ...plan, params: { ...plan.params, targetMax: 50 } }

@@ -293,12 +293,16 @@ export function startSessionEarly(planId: string, sessionIndex: number): void {
 }
 
 /** Backs out of a pulled-forward session while nothing is logged yet — the
- * session returns to its scheduled day. */
+ * session returns to its scheduled day. "Nothing logged" is judged on the
+ * actuals fitted to the session's current sets, the same view the Today card
+ * shows — a stale check-off beyond a shrunken set count must not block it. */
 export function cancelEarlySession(planId: string, sessionIndex: number): void {
   update((d) => {
     const p = d.plans.find((x) => x.id === planId)
-    if (p?.progress?.sessionIndex === sessionIndex && p.progress.actuals.every((a) => a == null))
-      delete p.progress
+    const session = p && effectiveSession(p, sessionIndex)
+    if (!p || p.progress?.sessionIndex !== sessionIndex) return
+    const count = session?.sets.length ?? p.progress.actuals.length
+    if (fitProgress(p.progress.actuals, count).every((a) => a == null)) delete p.progress
   })
 }
 
