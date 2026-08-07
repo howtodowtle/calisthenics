@@ -25,9 +25,13 @@ export const activePlanFor = (d: AppData, exerciseId: string): Plan | undefined 
 export const hasActivePlan = (d: AppData): boolean =>
   d.plans.some((p) => p.status === 'active')
 
+/** All plans (active and archived) of an exercise. */
+export const plansForExercise = (d: AppData, exerciseId: string): Plan[] =>
+  d.plans.filter((p) => p.exerciseId === exerciseId)
+
 /** Results across all plans (active and archived) of an exercise. */
 export function resultsForExercise(d: AppData, exerciseId: string): Result[] {
-  const planIds = new Set(d.plans.filter((p) => p.exerciseId === exerciseId).map((p) => p.id))
+  const planIds = new Set(plansForExercise(d, exerciseId).map((p) => p.id))
   return d.results.filter((r) => planIds.has(r.planId))
 }
 

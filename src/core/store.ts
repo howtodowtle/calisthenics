@@ -20,6 +20,7 @@ export {
   activePlanFor,
   dueExerciseCount,
   hasActivePlan,
+  plansForExercise,
   resultsForExercise,
   sortedExercises,
 } from './select'

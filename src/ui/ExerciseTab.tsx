@@ -1,6 +1,6 @@
 import { derivePlanView, predictedMaxIndex } from '../core/derive'
 import { exerciseStats } from '../core/stats'
-import { activePlanFor, db, resultsForExercise } from '../core/store'
+import { activePlanFor, db, plansForExercise, resultsForExercise } from '../core/store'
 import type { Exercise } from '../core/types'
 import { Chart } from './Chart'
 import { formatDate } from './format'
@@ -20,7 +20,7 @@ export function ExerciseTab({
   const data = db.value
   const activePlan = activePlanFor(data, exercise.id)
   const results = resultsForExercise(data, exercise.id)
-  const stats = exerciseStats(results, today)
+  const stats = exerciseStats(results, plansForExercise(data, exercise.id), today)
   const view = activePlan ? derivePlanView(activePlan, results, today) : null
   // History rows of the active plan show the max they were planned around.
   const predictedMax = view ? predictedMaxIndex(view) : undefined
