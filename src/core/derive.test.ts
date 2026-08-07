@@ -63,6 +63,75 @@ describe('derivePlanView', () => {
     expect(view.endDate).toBe('2026-10-24')
   })
 
+  it('dates a started session by its first check-off, making it due early', () => {
+    // Session 2 is scheduled for 07-22; on 07-21 the user pulled it forward
+    // and logged a set — it happens today, and stays due across reloads.
+    const p: Plan = { ...plan, progress: { sessionIndex: 2, actuals: [5, null], startedOn: '2026-07-21' } }
+    const view = derivePlanView(p, [result(1, '2026-07-20')], '2026-07-21')
+    expect(view.due?.index).toBe(2)
+    expect(view.due?.progress?.[0]).toBe(5)
+    expect(view.due?.date).toBe('2026-07-21') // the day it is happening
+    expect(view.due?.scheduledDate).toBe('2026-07-22') // the day the plan said
+  })
+
+  it('pull-forward intent alone (started, no sets yet) makes the session due', () => {
+    // "Do it today" stores empty progress; nothing else distinguishes a pull.
+    const p: Plan = {
+      ...plan,
+      progress: { sessionIndex: 2, actuals: [null, null, null, null], startedOn: '2026-07-21' },
+    }
+    const view = derivePlanView(p, [result(1, '2026-07-20')], '2026-07-21')
+    expect(view.due?.index).toBe(2)
+    expect(view.due?.date).toBe('2026-07-21')
+  })
+
+  it('keeps a pulled session due today when the floor schedules it tomorrow ("go again")', () => {
+    // Session 1 was completed late, today (07-26); the one-per-day floor slides
+    // session 2 to tomorrow. Pulling it the same day overrides: startedOn wins,
+    // while scheduledDate keeps the floor's projection honest.
+    const p: Plan = {
+      ...plan,
+      progress: { sessionIndex: 2, actuals: [null, null, null, null], startedOn: '2026-07-26' },
+    }
+    const view = derivePlanView(p, [result(1, '2026-07-26')], '2026-07-26')
+    expect(view.completedToday).toBe(true)
+    expect(view.due?.index).toBe(2)
+    expect(view.due?.date).toBe('2026-07-26')
+    expect(view.due?.scheduledDate).toBe('2026-07-27')
+  })
+
+  it('clamps a future startedOn to today, so a clock moved backward cannot lock the session out', () => {
+    // Pulled forward just after midnight, then the device day rolled back
+    // (timezone travel): without the clamp the session is neither due nor
+    // sweepable — stuck upcoming, blocking a new pull, until the calendar
+    // catches up.
+    const p: Plan = { ...plan, progress: { sessionIndex: 2, actuals: [5, null], startedOn: '2026-07-22' } }
+    const view = derivePlanView(p, [result(1, '2026-07-20')], '2026-07-21')
+    expect(view.due?.index).toBe(2)
+    expect(view.due?.date).toBe('2026-07-21')
+  })
+
+  it('never promotes a session past the first incomplete one, progress or not', () => {
+    const p: Plan = { ...plan, progress: { sessionIndex: 3, actuals: [5], startedOn: '2026-07-21' } }
+    const view = derivePlanView(p, [result(1, '2026-07-20')], '2026-07-21')
+    expect(view.due).toBeNull()
+    expect(view.sessions[2].status).toBe('upcoming')
+    expect(view.sessions[2].date).toBe('2026-07-24') // keeps its scheduled day
+  })
+
+  it('leaves the rest of the schedule untouched after an early double day', () => {
+    // Two Results on one day — the state a completed pull leaves behind (the
+    // pull record itself is gone by now). Nothing else moves, and nothing new
+    // becomes due — doing more is explicit, never automatic.
+    const done = [result(1, '2026-07-20'), result(2, '2026-07-20')]
+    const view = derivePlanView(plan, done, '2026-07-20')
+    expect(view.completedToday).toBe(true)
+    expect(view.due).toBeNull()
+    expect(view.next?.index).toBe(3)
+    expect(view.next?.date).toBe('2026-07-24') // Friday, exactly as scheduled
+    expect(view.endDate).toBe('2026-10-19') // the base end — no shift
+  })
+
   it('treats a skipped session as settled: never due, schedule unmoved', () => {
     // Session 2's Result was deleted; deleteResult marked it skipped.
     const p: Plan = { ...plan, skipped: [2] }
@@ -98,6 +167,17 @@ describe('derivePlanView', () => {
     const p: Plan = { ...plan, progress: { sessionIndex: 1, actuals: [10] } }
     const view = derivePlanView(p, [result(1, '2026-07-20')], '2026-07-21')
     expect(view.sessions[0].progress).toBeUndefined()
+  })
+
+  it('derives a fully completed plan: nothing due, nothing next', () => {
+    // Regression: with no progress and no incomplete session, the started-early
+    // lookup compared undefined === undefined and crashed on plan completion.
+    const total = derivePlanView(plan, [], '2026-07-20').sessions.length
+    const done = Array.from({ length: total }, (_, i) => result(i + 1, '2026-07-20'))
+    const view = derivePlanView(plan, done, '2026-10-20')
+    expect(view.due).toBeNull()
+    expect(view.next).toBeNull()
+    expect(view.completedCount).toBe(total)
   })
 
   it('keeps completed sessions as facts when params change', () => {

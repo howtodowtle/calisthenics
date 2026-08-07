@@ -50,6 +50,7 @@ Concrete consequences:
 | Edit a future day's sets | an override on the plan | that day shows your numbers, survives everything below |
 | Edit plan params mid-plan | new `params` | future re-derives from new params; past untouched |
 | Miss a few days | nothing | remaining schedule slides forward (computed, not stored) |
+| Pull the next session forward ("Do it today" on the rest card — offered on rest days and after a completed session alike) | `plan.progress`, started today with no sets done | the session is dated today and due; the pull moves no other session (completing it early can still let a behind-schedule tail catch back up); untouched, the pull expires on the midnight sweep |
 | Delete a logged session from History | its `Result` is erased; the index joins `plan.skipped` | the session counts as skipped — never due again, dates around it stay put |
 | Leave a session part-done overnight | its `progress` finalizes into a `Result` on next open | done sets keep their reps, missed sets record 0, the plan advances — a partial day still counts as trained |
 
@@ -64,7 +65,9 @@ Plan              exerciseId + generatorId + params + startDate
                   + progress?: { sessionIndex, actuals: (number|null)[], startedOn? }
                     — per-set check-offs of the due session; becomes a
                     Result (and is cleared) when the last set is logged,
-                    or auto-closes once its day (startedOn) has passed
+                    or auto-closes once its day (startedOn) has passed.
+                    Stored with all-null actuals it is the pull-forward
+                    marker ("Do it today"): startedOn dates the session
                   + skipped?: [sessionIndex] — sessions whose Result was
                     deleted; settled, never due again
 Result            completion snapshot (actuals editable for 24h, then frozen):
@@ -122,11 +125,21 @@ importing either.
 
 Session state machine (in `derive.ts`): a session is `done` (has a Result),
 `skipped` (its Result was deleted — settled, hidden from lists, never due),
-`due` (the **first** incomplete session, date ≤ today — logging is strictly
-sequential, so at most one session is ever due), or `upcoming`. One session
-per day: once today's session is logged, the remaining schedule shifts from
-*tomorrow*, so finishing a behind-schedule session never makes the next one
-due the same day.
+`due` (the **first** incomplete session whose date ≤ today — logging is
+strictly sequential, so at most one session is ever due), or `upcoming`. A
+session's date is the day it *happens*: a session with `progress` is dated
+its `startedOn`, so one pulled forward ("Do it today" stores empty progress,
+`startSessionEarly`) is due today whatever the plan said, and every consumer
+of the date — status, overview, lists — agrees for free; `scheduledDate`
+keeps what the plan said. One session per day *by default*: once today's
+session is logged, the remaining schedule shifts from *tomorrow*, so finishing
+a behind-schedule session never makes the next one due by itself. Doing more is
+an explicit opt-in via the rest-card offer, on rest days and right after a
+completed session alike, and the pull itself moves only that one session —
+`shiftedDates` never drags the ones after it along. (Completing sessions
+early can still let a behind-schedule plan catch back up: the slid dates
+re-derive toward their base positions, never earlier than the plan's own
+layout.) An untouched pull expires on the midnight sweep.
 
 A partial session — some sets checked off, but the day ended before the rest —
 auto-closes on the next app open or midnight rollover: `finalizeStalePartials`
@@ -232,7 +245,7 @@ update re-renders everything; at this data size that's the simplest correct mode
 | `App.tsx` | Tab bar (Overview first, then one tab per exercise; Settings and Help sit behind fixed buttons top-right, not in the bar), `useToday()` (re-renders on foregrounding / every minute so "today" survives midnight). The open tab persists under `ui.tab.v2`; the overview is the default landing tab. Past ~4 exercises the tabs outgrow the width and the bar scrolls sideways; `useCenterActiveTab` centres the open one, found by its `aria-current` |
 | `Overview.tsx` | The week at a glance — the next 7 days, each listing every exercise's session. Deliberately **read-only**: rows are shortcuts that open the exercise, so logging keeps exactly one home (the Today card). Rest days are omitted; `deriveOverview` returns them, so listing them is a one-line change |
 | `ExerciseTab.tsx` | Composition: today card → stats → chart → schedule → history |
-| `TodayCard.tsx` | Per-set logging: tap a set when you've done it (tap again to undo); the last set completes the session. Max tests and minimum sets prompt for actual numbers; one button logs everything remaining; "Adjust reps" edits today's targets as an override *without* logging the session |
+| `TodayCard.tsx` | Per-set logging: tap a set when you've done it (tap again to undo); the last set completes the session. Max tests and minimum sets prompt for actual numbers; one button logs everything remaining; "Adjust reps" edits today's targets as an override *without* logging the session. The rest card (same file) offers the next session early — "Do it today", also as a second session after one is done; the pull moves only that session |
 | `ScheduleList.tsx` | Upcoming sessions; tapping a row opens an inline editor that stores an override |
 | `HistoryList.tsx` | Past Results, newest first; rows finished within 24h are tappable to correct the logged actuals. Rows swipe left to delete their Result behind a confirm (`SwipeToDelete.tsx` owns the gesture) |
 | `Chart.tsx` | SVG progress chart — planned volume line, done dots, test diamonds, tap/drag crosshair. Colors are `--viz-*` tokens validated for both themes |

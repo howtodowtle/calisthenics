@@ -45,7 +45,8 @@ export const OVERVIEW_DAYS = 7
  *
  * Completed sessions are left out: this is a forward-looking view. An overdue
  * session (the plan's `due` one, if its date somehow slipped behind) is filed
- * under today — it's what you owe now, not a past appointment.
+ * under today — it's what you owe now, not a past appointment. A pulled-forward
+ * session needs no case here: derive already dates it the day it started.
  */
 export function deriveOverview(d: AppData, today: string): OverviewDay[] {
   const days: OverviewDay[] = Array.from({ length: OVERVIEW_DAYS }, (_, i) => ({
@@ -60,8 +61,9 @@ export function deriveOverview(d: AppData, today: string): OverviewDay[] {
 
     for (const session of view.sessions) {
       if (!isPending(session)) continue
-      // Clamping at 0 files an overdue session under today. Incomplete sessions
-      // are date-ordered, so the first one past the window ends this plan's scan.
+      // The clamp guards the index and files an overdue session under today;
+      // upcoming dates are never in the past. Incomplete sessions are
+      // date-ordered, so the first one past the window ends this plan's scan.
       const i = Math.max(0, daysBetween(today, session.date))
       if (i >= days.length) break
       days[i].entries.push({ exercise, session })

@@ -1,7 +1,7 @@
 import { Check } from 'lucide-preact'
 import { useState } from 'preact/hooks'
 import { countDone, fitProgress, type SessionView } from '../core/derive'
-import { completeSession, logSet, setOverride, undoSet } from '../core/store'
+import { cancelEarlySession, completeSession, logSet, setOverride, startSessionEarly, undoSet } from '../core/store'
 import type { Exercise } from '../core/types'
 import { formatDate, SessionBadges, setLabel, unitSuffix } from './format'
 
@@ -113,12 +113,18 @@ export function TodayCard({
   const hintText = hint()
 
   const overdue = session.date < today
+  /** Pulled forward: being done today ahead of its scheduled date. */
+  const early = session.scheduledDate > today
 
   return (
     <div class="card" data-size="sm">
       <section>
       <div class={overdue ? 'eyebrow overdue' : 'eyebrow'}>
-        {overdue ? `Overdue · ${formatDate(session.date, today)}` : 'Today'}
+        {overdue
+          ? `Overdue · ${formatDate(session.date, today)}`
+          : early
+            ? `Early · ${formatDate(session.scheduledDate, today)}`
+            : 'Today'}
       </div>
       <div class="row">
         <span class="today-title">
@@ -178,14 +184,26 @@ export function TodayCard({
         {primaryLabel()}
       </button>
       {mode.kind === 'view' ? (
-        <button
-          class="btn block"
-          data-variant="ghost"
-          style={{ marginTop: 6 }}
-          onClick={() => enter({ kind: 'edit', scope: 'all' })}
-        >
-          Adjust {exercise.unit === 'seconds' ? 'times' : 'reps'}
-        </button>
+        <>
+          <button
+            class="btn block"
+            data-variant="ghost"
+            style={{ marginTop: 6 }}
+            onClick={() => enter({ kind: 'edit', scope: 'all' })}
+          >
+            Adjust {exercise.unit === 'seconds' ? 'times' : 'reps'}
+          </button>
+          {early && doneCount === 0 && (
+            <button
+              class="btn block"
+              data-variant="ghost"
+              style={{ marginTop: 6 }}
+              onClick={() => cancelEarlySession(planId, session.index)}
+            >
+              Not today
+            </button>
+          )}
+        </>
       ) : (
         <button
           class="btn block"
@@ -203,10 +221,12 @@ export function TodayCard({
 
 export function RestCard({
   next,
+  planId,
   today,
   completedToday,
 }: {
   next: SessionView | null
+  planId: string
   today: string
   /** A session was already logged today — celebrate it instead of claiming "rest day". */
   completedToday?: boolean
@@ -222,6 +242,15 @@ export function RestCard({
               {completedToday && 'Recover well. '}
               Next: {formatDate(next.date, today)} — Week {next.week} · Session {next.index}
             </p>
+            {/* Pulls `next` forward to today — early on a rest day, or a second
+              * session after today's. Only that session moves (see store.ts). */}
+            <button
+              class="btn block"
+              data-variant="ghost"
+              onClick={() => startSessionEarly(planId, next.index, today)}
+            >
+              {completedToday ? 'Go again — do it today' : 'Do it today'}
+            </button>
           </>
         ) : (
           <>

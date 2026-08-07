@@ -109,6 +109,21 @@ describe('deriveOverview', () => {
     expect(today.entries.every((e) => e.session.status === 'due')).toBe(true)
   })
 
+  it('files an early-started session under today, not its scheduled day', () => {
+    // Push-ups session 2 (Wed 07-22) was pulled forward on Tuesday and has a
+    // set checked off — it is due, so it belongs to today.
+    const data = app({
+      plans: [{
+        ...plan('p-push', 'e-push', 3),
+        progress: { sessionIndex: 2, actuals: [5, null], startedOn: '2026-07-21' },
+      }],
+      results: [result('p-push', 1, '2026-07-20')],
+    })
+    const days = deriveOverview(data, '2026-07-21')
+    expect(days[0].entries.map((e) => e.session.index)).toEqual([2])
+    expect(days[1].entries).toEqual([]) // Wed 07-22 — the session moved to today
+  })
+
   it('never shows a day twice for one exercise', () => {
     for (const day of deriveOverview(app(), '2026-07-20')) {
       const ids = day.entries.map((e) => e.exercise.id)

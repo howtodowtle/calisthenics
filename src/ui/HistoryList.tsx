@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks'
-import { isResultEditable } from '../core/derive'
+import { isResultEditable, sessionKey } from '../core/derive'
 import { deleteResult, editResult } from '../core/store'
 import type { Result, Unit } from '../core/types'
 import { actualsSummary, formatDate, maxHint, SessionBadges, setLabel, stagger } from './format'
@@ -35,7 +35,7 @@ export function HistoryList({
       <div class="card" data-size="sm" style={{ paddingBlock: 4 }}>
         <section>
           {sorted.map((r, i) => {
-            const pm = predictedMax?.get(`${r.planId}:${r.sessionIndex}`)
+            const pm = predictedMax?.get(sessionKey(r.planId, r.sessionIndex))
             if (open === r.id) {
               return <ResultEditor key={r.id} result={r} onClose={() => setOpen(null)} />
             }

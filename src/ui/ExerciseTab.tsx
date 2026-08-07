@@ -1,4 +1,4 @@
-import { derivePlanView, predictedMaxIndex } from '../core/derive'
+import { derivePlanView, predictedMaxIndex, sessionKey } from '../core/derive'
 import { exerciseStats } from '../core/stats'
 import { activePlanFor, db, plansForExercise, resultsForExercise } from '../core/store'
 import type { Exercise } from '../core/types'
@@ -40,14 +40,19 @@ export function ExerciseTab({
         <>
           {view.due ? (
             <TodayCard
-              key={`${view.plan.id}:${view.due.index}`}
+              key={sessionKey(view.plan.id, view.due.index)}
               session={view.due}
               planId={view.plan.id}
               exercise={exercise}
               today={today}
             />
           ) : (
-            <RestCard next={view.next} today={today} completedToday={view.completedToday} />
+            <RestCard
+              next={view.next}
+              planId={view.plan.id}
+              today={today}
+              completedToday={view.completedToday}
+            />
           )}
 
           <div class="stats-row">

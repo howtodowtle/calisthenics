@@ -14,8 +14,12 @@ export interface SessionView {
   /** Effective sets: override if present, generated otherwise. */
   sets: SetTemplate[]
   overridden: boolean
-  /** Result completion date for done sessions, shifted schedule date otherwise. */
+  /** Day the session happens: Result date once done, the day its sets started
+   * (progress.startedOn) while in progress, shifted schedule date otherwise.
+   * Differs from `scheduledDate` only for a session pulled forward. */
   date: string
+  /** Day the plan puts the session on (the shifted schedule date). */
+  scheduledDate: string
   week: number
   result?: Result
   /** 'skipped': its Result was deleted — settled, not owed (see Plan.skipped). */
@@ -102,7 +106,8 @@ export function partialToClose(
 export interface PlanView {
   plan: Plan
   sessions: SessionView[]
-  /** Session for the Today card: first incomplete one whose date ≤ today. */
+  /** Session for the Today card: first incomplete one whose date ≤ today.
+   * A pulled-forward session counts — its date is the day it started. */
   due: SessionView | null
   /** Next upcoming session when nothing is due. */
   next: SessionView | null
@@ -134,7 +139,8 @@ export function derivePlanView(plan: Plan, results: Result[], today: string): Pl
   const completedToday = results.some((r) => r.date === today)
   // A behind-schedule plan's next base date is also in the past, so without
   // this floor the next session would fall due the moment today's completes —
-  // sessions are one per day.
+  // one session per day unless the user explicitly pulls the next one forward
+  // (`startSessionEarly` in store.ts, which dates it today via `started`).
   const earliest = completedToday ? addDays(today, 1) : today
   const dates = shiftedDates(
     baseDates(plan.startDate, templates.length, perWeek),
@@ -142,12 +148,28 @@ export function derivePlanView(plan: Plan, results: Result[], today: string): Pl
     earliest,
   )
 
+  // A session in progress happens on the day it started, however its scheduled
+  // date lies — that is the whole pull-forward mechanism: "Do it today" stores
+  // an empty started-today progress, and everything downstream (due status,
+  // overview filing, list dates) follows from the date. Scoped to the first
+  // incomplete session, the only one that can legitimately be in progress.
+  // The explicit progress check matters: on a completed plan both sides of the
+  // index comparison are undefined, which must not read as a match. The clamp
+  // guards against clocks that moved backward (midnight race, timezone travel):
+  // a session started "in the future" is simply being done today — unclamped it
+  // would be neither due nor sweepable until the calendar caught up.
+  const startedOn =
+    plan.progress && plan.progress.sessionIndex === templates[firstIncomplete]?.index
+      ? plan.progress.startedOn
+      : undefined
+  const started = startedOn && startedOn > today ? today : startedOn
+
   /** The session state machine — first match wins. */
   const statusOf = (index: number, i: number, result?: Result): SessionView['status'] => {
     if (result) return 'done'
     if (skipped.includes(index)) return 'skipped' // settled, not owed
     // Only the first incomplete session can be due — logging is sequential.
-    if (i === firstIncomplete && dates[i] <= today) return 'due'
+    if (i === firstIncomplete && (started ?? dates[i]) <= today) return 'due'
     return 'upcoming'
   }
 
@@ -161,7 +183,8 @@ export function derivePlanView(plan: Plan, results: Result[], today: string): Pl
       type: t.type,
       sets,
       overridden: Boolean(override),
-      date: result ? result.date : dates[i],
+      date: result ? result.date : i === firstIncomplete && started ? started : dates[i],
+      scheduledDate: dates[i],
       week: weekOf(i, perWeek) + 1,
       result,
       status,
@@ -216,14 +239,19 @@ export function isResultEditable(r: Result, nowMs: number, today: string): boole
   return r.date === today
 }
 
+/** Identity of a session within a plan — the one owner of the
+ * "planId:sessionIndex" format used for lookups and UI list keys. */
+export const sessionKey = (planId: string, sessionIndex: number): string =>
+  `${planId}:${sessionIndex}`
+
 /**
- * predictedMax per "planId:sessionIndex" key — lets history rows (which span
- * plans) look up the max a session was planned around.
+ * predictedMax per `sessionKey` — lets history rows (which span plans) look
+ * up the max a session was planned around.
  */
 export function predictedMaxIndex(view: PlanView): Map<string, number> {
   const map = new Map<string, number>()
   for (const s of view.sessions) {
-    if (s.predictedMax != null) map.set(`${view.plan.id}:${s.index}`, s.predictedMax)
+    if (s.predictedMax != null) map.set(sessionKey(view.plan.id, s.index), s.predictedMax)
   }
   return map
 }

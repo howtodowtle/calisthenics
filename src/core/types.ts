@@ -46,6 +46,8 @@ export interface SessionTemplate {
  * Per-set check-offs for the one session currently in progress — sets can be
  * spread across the day (one in the morning, two at lunch, …). Cleared the
  * moment the last set lands and the session becomes an immutable Result.
+ * Also the pull-forward marker: "Do it today" stores this with every actual
+ * null, which dates the session today and makes it due (see derive.ts).
  */
 export interface SessionProgress {
   sessionIndex: number
@@ -74,7 +76,9 @@ export interface Plan {
   calibrations: CalibrationPoint[]
   /** Manual per-day edits, keyed by session index. Survive re-derivation. */
   overrides: Record<number, { sets: SetTemplate[] }>
-  /** Sets checked off so far in the due session, at most one at a time. */
+  /** In-day state of the one session being trained, at most one at a time:
+   * per-set check-offs, or the all-null pull-forward marker (see
+   * SessionProgress). */
   progress?: SessionProgress
   /** Sessions whose Result was deleted from History. They count as skipped:
    * never due again, the plan moves on, the schedule around them stays put. */

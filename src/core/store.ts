@@ -171,7 +171,12 @@ export function createPlan(
 export function updatePlanParams(planId: string, params: Record<string, number>): void {
   update((d) => {
     const p = d.plans.find((x) => x.id === planId)
-    if (p) p.params = params
+    if (!p) return
+    p.params = params
+    // Progress for a session the new params no longer produce is orphaned —
+    // it could never close into a Result, only linger and block the next pull
+    // until the midnight sweep. Drop it now.
+    if (p.progress && !effectiveSession(p, p.progress.sessionIndex)) delete p.progress
   })
 }
 
@@ -274,6 +279,38 @@ export function completeSession(
   })
 }
 
+/** Pulls the next session forward ("Do it today" — on a rest day, or a second
+ * session after today's): stores it as started today with no sets done, which
+ * dates it today and makes it due (see `derivePlanView`). Only this session
+ * moves — `shiftedDates` never drags the ones after it along. Left untouched,
+ * the pull expires on the midnight sweep like any other empty progress. */
+export function startSessionEarly(planId: string, sessionIndex: number, date: string = todayISO()): void {
+  update((d) => {
+    const p = d.plans.find((x) => x.id === planId)
+    const session = p && effectiveSession(p, sessionIndex)
+    if (!p || !session || p.progress) return
+    p.progress = {
+      sessionIndex,
+      actuals: session.sets.map(() => null),
+      startedOn: date,
+    }
+  })
+}
+
+/** Backs out of a pulled-forward session while nothing is logged yet — the
+ * session returns to its scheduled day. "Nothing logged" is judged on the
+ * actuals fitted to the session's current sets, the same view the Today card
+ * shows — a stale check-off beyond a shrunken set count must not block it. */
+export function cancelEarlySession(planId: string, sessionIndex: number): void {
+  update((d) => {
+    const p = d.plans.find((x) => x.id === planId)
+    const session = p && effectiveSession(p, sessionIndex)
+    if (!p || p.progress?.sessionIndex !== sessionIndex) return
+    const count = session?.sets.length ?? p.progress.actuals.length
+    if (fitProgress(p.progress.actuals, count).every((a) => a == null)) delete p.progress
+  })
+}
+
 /** Checks off a single set of the due session — sets can land one at a time
  * through the day. `actual` defaults to the set's planned target. When the
  * last set lands, the session finalizes into a Result exactly as a one-go
@@ -325,14 +362,15 @@ export function finalizeStalePartials(today: string = todayISO()): void {
   })
 }
 
-/** Un-checks a set (mistap insurance). Clearing the last one drops the
- * progress record entirely. */
+/** Un-checks a set (mistap insurance). The record survives even fully
+ * un-checked — it keeps the session's day (and a pulled-forward session
+ * pulled); with nothing done it evaporates on the next midnight sweep
+ * instead of closing into a Result (see `partialToClose`). */
 export function undoSet(planId: string, sessionIndex: number, setIndex: number): void {
   update((d) => {
     const p = d.plans.find((x) => x.id === planId)
     if (!p || p.progress?.sessionIndex !== sessionIndex) return
     p.progress.actuals[setIndex] = null
-    if (p.progress.actuals.every((a) => a == null)) delete p.progress
   })
 }
 
