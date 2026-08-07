@@ -85,6 +85,16 @@ describe('derivePlanView', () => {
     expect(view.due?.date).toBe('2026-07-21')
   })
 
+  it('clamps a future startedOn to today, so a clock moved backward cannot lock the session out', () => {
+    // Pulled forward just after midnight, then the device day rolled back
+    // (timezone travel): without the clamp the session is neither due nor
+    // sweepable — invisible and unloggable until the calendar catches up.
+    const p: Plan = { ...plan, progress: { sessionIndex: 2, actuals: [5, null], startedOn: '2026-07-22' } }
+    const view = derivePlanView(p, [result(1, '2026-07-20')], '2026-07-21')
+    expect(view.due?.index).toBe(2)
+    expect(view.due?.date).toBe('2026-07-21')
+  })
+
   it('never promotes a session past the first incomplete one, progress or not', () => {
     const p: Plan = { ...plan, progress: { sessionIndex: 3, actuals: [5], startedOn: '2026-07-21' } }
     const view = derivePlanView(p, [result(1, '2026-07-20')], '2026-07-21')

@@ -135,9 +135,11 @@ keeps what the plan said. One session per day *by default*: once today's
 session is logged, the remaining schedule shifts from *tomorrow*, so finishing
 a behind-schedule session never makes the next one due by itself. Doing more is
 an explicit opt-in via the rest-card offer, on rest days and right after a
-completed session alike, and each pull moves only that one session —
-`shiftedDates` only ever pushes forward, so the sessions after it keep their
-dates. An untouched pull expires on the midnight sweep.
+completed session alike, and the pull itself moves only that one session —
+`shiftedDates` never drags the ones after it along. (Completing sessions
+early can still let a behind-schedule plan catch back up: the slid dates
+re-derive toward their base positions, never earlier than the plan's own
+layout.) An untouched pull expires on the midnight sweep.
 
 A partial session — some sets checked off, but the day ended before the rest —
 auto-closes on the next app open or midnight rollover: `finalizeStalePartials`

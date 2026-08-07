@@ -279,7 +279,7 @@ export function completeSession(
  * dates it today and makes it due (see `derivePlanView`). Only this session
  * moves — `shiftedDates` never drags the ones after it along. Left untouched,
  * the pull expires on the midnight sweep like any other empty progress. */
-export function startSessionEarly(planId: string, sessionIndex: number): void {
+export function startSessionEarly(planId: string, sessionIndex: number, date: string = todayISO()): void {
   update((d) => {
     const p = d.plans.find((x) => x.id === planId)
     const session = p && effectiveSession(p, sessionIndex)
@@ -287,7 +287,7 @@ export function startSessionEarly(planId: string, sessionIndex: number): void {
     p.progress = {
       sessionIndex,
       actuals: session.sets.map(() => null),
-      startedOn: todayISO(),
+      startedOn: date,
     }
   })
 }

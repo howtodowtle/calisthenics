@@ -154,11 +154,15 @@ export function derivePlanView(plan: Plan, results: Result[], today: string): Pl
   // overview filing, list dates) follows from the date. Scoped to the first
   // incomplete session, the only one that can legitimately be in progress.
   // The explicit progress check matters: on a completed plan both sides of the
-  // index comparison are undefined, which must not read as a match.
-  const started =
+  // index comparison are undefined, which must not read as a match. The clamp
+  // guards against clocks that moved backward (midnight race, timezone travel):
+  // a session started "in the future" is simply being done today — unclamped it
+  // would be neither due nor sweepable until the calendar caught up.
+  const startedOn =
     plan.progress && plan.progress.sessionIndex === templates[firstIncomplete]?.index
       ? plan.progress.startedOn
       : undefined
+  const started = startedOn && startedOn > today ? today : startedOn
 
   /** The session state machine — first match wins. */
   const statusOf = (index: number, i: number, result?: Result): SessionView['status'] => {

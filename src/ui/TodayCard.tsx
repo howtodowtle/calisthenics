@@ -247,7 +247,7 @@ export function RestCard({
             <button
               class="btn block"
               data-variant="ghost"
-              onClick={() => startSessionEarly(planId, next.index)}
+              onClick={() => startSessionEarly(planId, next.index, today)}
             >
               {completedToday ? 'Go again — do it today' : 'Do it today'}
             </button>
