@@ -30,7 +30,9 @@ export function Chart({ sessions, unit, today }: { sessions: SessionView[]; unit
 
   if (sessions.length < 2) return null
 
-  const planned = sessions.map((s) => sumTarget(s.sets))
+  // Planned = the generator's targets, not the effective (possibly overridden)
+  // sets — a day-of "Adjust reps" must not drag the line onto the done dot.
+  const planned = sessions.map((s) => sumTarget(s.plannedSets))
   const actuals = sessions.map((s) => (s.result ? sumActual(s.result.sets) : null))
   const predicted = sessions.map((s) => s.predictedMax ?? null)
   const hasMax = predicted.some((v) => v !== null)
@@ -151,8 +153,11 @@ export function Chart({ sessions, unit, today }: { sessions: SessionView[]; unit
         <div class="viz-tooltip" style={{ left: `${(selX / W) * 100}%` }}>
           <strong>Session {sel.index}</strong> · {formatDate(sel.date, today)}
           <br />
-          planned {sumTarget(sel.sets)}
+          planned {sumTarget(sel.plannedSets)}
           {sfx}
+          {sumTarget(sel.sets) !== sumTarget(sel.plannedSets)
+            ? ` · adjusted ${sumTarget(sel.sets)}${sfx}`
+            : ''}
           {sel.result ? ` · done ${sumActual(sel.result.sets)}${sfx}` : ''}
           {sel.predictedMax != null ? ` · ${maxHint(sel.predictedMax, unit)}` : ''}
         </div>

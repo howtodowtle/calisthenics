@@ -13,6 +13,10 @@ export interface SessionView {
   type: SessionType
   /** Effective sets: override if present, generated otherwise. */
   sets: SetTemplate[]
+  /** The generator's sets, untouched by overrides — what the plan called for.
+   * The chart's planned line reads these, so a day-of adjustment moves the
+   * done dot away from the line instead of dragging the line along. */
+  plannedSets: SetTemplate[]
   overridden: boolean
   /** Day the session happens: Result date once done, the day its sets started
    * (progress.startedOn) while in progress, shifted schedule date otherwise.
@@ -182,6 +186,7 @@ export function derivePlanView(plan: Plan, results: Result[], today: string): Pl
       index: t.index,
       type: t.type,
       sets,
+      plannedSets: t.sets,
       overridden: Boolean(override),
       date: result ? result.date : i === firstIncomplete && started ? started : dates[i],
       scheduledDate: dates[i],
