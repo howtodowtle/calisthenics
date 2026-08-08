@@ -153,9 +153,7 @@ describe('derivePlanView', () => {
     expect(s2.sets[0].target).toBe(99)
     // plannedSets stay the generator's — the chart's planned line must not
     // follow a day-of adjustment onto the done dot.
-    const pristine = derivePlanView(plan, [], '2026-07-20').sessions[1]
-    expect(s2.plannedSets).toEqual(pristine.sets)
-    expect(s2.plannedSets[0].target).not.toBe(99)
+    expect(s2.plannedSets).toEqual(effectiveSession(plan, 2)!.sets)
   })
 
   it('exposes per-set progress on the in-progress session, sized to its sets', () => {

@@ -30,8 +30,7 @@ export function Chart({ sessions, unit, today }: { sessions: SessionView[]; unit
 
   if (sessions.length < 2) return null
 
-  // Planned = the generator's targets, not the effective (possibly overridden)
-  // sets — a day-of "Adjust reps" must not drag the line onto the done dot.
+  // Generator targets, not effective sets — see SessionView.plannedSets.
   const planned = sessions.map((s) => sumTarget(s.plannedSets))
   const actuals = sessions.map((s) => (s.result ? sumActual(s.result.sets) : null))
   const predicted = sessions.map((s) => s.predictedMax ?? null)
@@ -77,6 +76,8 @@ export function Chart({ sessions, unit, today }: { sessions: SessionView[]; unit
 
   const sel = picked !== null ? sessions[picked] : null
   const selX = picked !== null ? x(picked) : 0
+  const selPlanned = picked !== null ? planned[picked] : 0
+  const selAdjusted = sel ? sumTarget(sel.sets) : 0
   const sfx = unitSuffix(unit)
 
   return (
@@ -153,11 +154,9 @@ export function Chart({ sessions, unit, today }: { sessions: SessionView[]; unit
         <div class="viz-tooltip" style={{ left: `${(selX / W) * 100}%` }}>
           <strong>Session {sel.index}</strong> · {formatDate(sel.date, today)}
           <br />
-          planned {sumTarget(sel.plannedSets)}
+          planned {selPlanned}
           {sfx}
-          {sumTarget(sel.sets) !== sumTarget(sel.plannedSets)
-            ? ` · adjusted ${sumTarget(sel.sets)}${sfx}`
-            : ''}
+          {sel.overridden && selAdjusted !== selPlanned ? ` · adjusted ${selAdjusted}${sfx}` : ''}
           {sel.result ? ` · done ${sumActual(sel.result.sets)}${sfx}` : ''}
           {sel.predictedMax != null ? ` · ${maxHint(sel.predictedMax, unit)}` : ''}
         </div>
