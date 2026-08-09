@@ -1,6 +1,6 @@
 import { addDays } from './dates'
 import { getGenerator } from './generators'
-import { baseDates, perWeekOf, shiftedDates, weekOf } from './schedule'
+import { anchoredDates, baseDates, perWeekOf, weekOf, type ScheduleAnchor } from './schedule'
 import type { CalibrationPoint, Plan, Result, SessionProgress, SessionType, SetTemplate } from './types'
 
 /**
@@ -19,10 +19,10 @@ export interface SessionView {
   plannedSets: SetTemplate[]
   overridden: boolean
   /** Day the session happens: Result date once done, the day its sets started
-   * (progress.startedOn) while in progress, shifted schedule date otherwise.
+   * (progress.startedOn) while in progress, anchored schedule date otherwise.
    * Differs from `scheduledDate` only for a session pulled forward. */
   date: string
-  /** Day the plan puts the session on (the shifted schedule date). */
+  /** Day the plan puts the session on (the anchored schedule date). */
   scheduledDate: string
   week: number
   result?: Result
@@ -121,8 +121,8 @@ export interface PlanView {
   completedCount: number
   /** A session of this exercise was logged today — any plan, so finishing an
    * old plan's session still counts as having trained. Also the input to the
-   * one-session-per-day floor: when set, the remaining schedule starts
-   * tomorrow, so its cross-plan scope is intentional. */
+   * one-session-per-day floor: when set, the next session lands no earlier
+   * than tomorrow, so its cross-plan scope is intentional. */
   completedToday: boolean
 }
 
@@ -141,14 +141,31 @@ export function derivePlanView(plan: Plan, results: Result[], today: string): Pl
   )
   if (firstIncomplete === -1) firstIncomplete = templates.length
   const completedToday = results.some((r) => r.date === today)
-  // A behind-schedule plan's next base date is also in the past, so without
-  // this floor the next session would fall due the moment today's completes —
-  // one session per day unless the user explicitly pulls the next one forward
+  /** Backward-clock guard: a stored date "in the future" happened today. */
+  const capAtToday = (d: string): string => (d > today ? today : d)
+  // The future hangs off the last session that actually happened: walk back
+  // from the first incomplete slot past skipped ones (they have no Result) to
+  // the newest completed session. No Result at all → no anchor, base layout.
+  let anchor: ScheduleAnchor | null = null
+  for (let j = firstIncomplete - 1; j >= 0; j--) {
+    const r = resultByIndex.get(templates[j].index)
+    if (r) {
+      anchor = { position: j, date: capAtToday(r.date) }
+      break
+    }
+  }
+  // One session per day: once today's is logged the next lands no earlier
+  // than tomorrow. The anchor makes that automatic only when it is today's
+  // Result (actual date + ≥1-day spacing); the floor covers the rest — no
+  // anchor yet, a days-old anchor while today's log came from another plan
+  // (completedToday is cross-plan on purpose), and overdue sessions generally
+  // — unless the user explicitly pulls the next session forward
   // (`startSessionEarly` in store.ts, which dates it today via `started`).
   const earliest = completedToday ? addDays(today, 1) : today
-  const dates = shiftedDates(
+  const dates = anchoredDates(
     baseDates(plan.startDate, templates.length, perWeek),
     firstIncomplete,
+    anchor,
     earliest,
   )
 
@@ -158,15 +175,14 @@ export function derivePlanView(plan: Plan, results: Result[], today: string): Pl
   // overview filing, list dates) follows from the date. Scoped to the first
   // incomplete session, the only one that can legitimately be in progress.
   // The explicit progress check matters: on a completed plan both sides of the
-  // index comparison are undefined, which must not read as a match. The clamp
-  // guards against clocks that moved backward (midnight race, timezone travel):
-  // a session started "in the future" is simply being done today — unclamped it
-  // would be neither due nor sweepable until the calendar caught up.
+  // index comparison are undefined, which must not read as a match. Without
+  // `capAtToday`, a session started "in the future" (midnight race, timezone
+  // travel) would be neither due nor sweepable until the calendar caught up.
   const startedOn =
     plan.progress && plan.progress.sessionIndex === templates[firstIncomplete]?.index
       ? plan.progress.startedOn
       : undefined
-  const started = startedOn && startedOn > today ? today : startedOn
+  const started = startedOn && capAtToday(startedOn)
 
   /** The session state machine — first match wins. */
   const statusOf = (index: number, i: number, result?: Result): SessionView['status'] => {
@@ -217,7 +233,9 @@ export function derivePlanView(plan: Plan, results: Result[], today: string): Pl
 
 /**
  * Session count + end date a (generator, params, start date) combo would
- * produce — the plan-form preview, derived the same way a real plan is.
+ * produce — the plan-form preview. Shows the base calendar (start date +
+ * params only): a mid-flight plan that ran late or early re-anchors in
+ * `derivePlanView`, so its real end date differs by the accrued shift.
  */
 export function previewPlan(
   generatorId: string,

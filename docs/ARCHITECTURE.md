@@ -20,14 +20,16 @@ Everything else follows from this.
   calibration point follows the corrected number. After the window closes the
   Result is immutable — though it can still be deleted outright from History
   (swipe left, confirm). Deletion means skipped, not owed: the session is
-  recorded in `Plan.skipped`, never comes due again, and the schedule around
-  it stays put; a deleted test takes its calibration point with it.
+  recorded in `Plan.skipped` and never comes due again; a deleted test takes
+  its calibration point with it. Deleting the newest Result also moves the
+  schedule's anchor back to the one before it, so the future re-derives from
+  there.
 - **Future = pure function.** The schedule you see for incomplete sessions is
   recomputed on every render:
 
   ```
   sessions = overrides ⊕ generator.generate(plan.params, plan.calibrations)
-  dates    = shiftedDates(baseDates(plan.startDate, sessionsPerWeek), firstIncomplete, earliest)
+  dates    = anchoredDates(baseDates(plan.startDate, sessionsPerWeek), firstIncomplete, lastCompleted, earliest)
   ```
 
 - **Storage holds only inputs**: params, calibrations, overrides, results. Never
@@ -49,9 +51,9 @@ Concrete consequences:
 | Log a max test | a `Result` + a `CalibrationPoint` | future targets bend toward your real max |
 | Edit a future day's sets | an override on the plan | that day shows your numbers, survives everything below |
 | Edit plan params mid-plan | new `params` | future re-derives from new params; past untouched |
-| Miss a few days | nothing | remaining schedule slides forward (computed, not stored) |
-| Pull the next session forward ("Do it today" on the rest card — offered on rest days and after a completed session alike) | `plan.progress`, started today with no sets done | the session is dated today and due; the pull moves no other session (completing it early can still let a behind-schedule tail catch back up); untouched, the pull expires on the midnight sweep |
-| Delete a logged session from History | its `Result` is erased; the index joins `plan.skipped` | the session counts as skipped — never due again, dates around it stay put |
+| Miss a few days | nothing | the whole remaining schedule, end date included, moves later by the delay and stays there (computed, not stored) |
+| Pull the next session forward ("Do it today" on the rest card — offered on rest days and after a completed session alike) | `plan.progress`, started today with no sets done | the session is dated today and due; the pull moves no other session while pending — completing it early re-anchors the rest of the schedule to that day; untouched, the pull expires on the midnight sweep |
+| Delete a logged session from History | its `Result` is erased; the index joins `plan.skipped` | the session counts as skipped — never due again; deleting the newest Result re-anchors the future to the previous one |
 | Leave a session part-done overnight | its `progress` finalizes into a `Result` on next open | done sets keep their reps, missed sets record 0, the plan advances — a partial day still counts as trained |
 
 ## Data model (`src/core/types.ts`)
@@ -116,9 +118,9 @@ importing either.
 |---|---|
 | `store.ts` | One `@preact/signals` signal over the whole `AppData` blob; every mutation goes through `update()` which clones, mutates, persists to localStorage. All mutations live here (`createPlan`, `completeSession`, `logSet`, `setOverride`, …) — UI components never touch storage directly. Re-exports `select.ts`. |
 | `select.ts` | Pure `AppData` queries with one owner each: `sortedExercises`, `activePlanFor`, `hasActivePlan`, `plansForExercise`, `resultsForExercise`, `dueExerciseCount`. Separate from `store.ts` so nothing has to import the storage singleton to read the blob. |
-| `derive.ts` | `derivePlanView(plan, results, today)` — merges generator output, overrides, results and shifted dates into `SessionView[]` plus `due` / `next` / `endDate`. The single source for "what does this plan look like right now". |
-| `overview.ts` | `deriveOverview(data, today)` — the week ahead across *all* exercises with an active plan, as one `OverviewDay` per calendar day (rest days included, empty). Completed sessions drop out; an overdue session files under today. Only today is a fact: later days assume you stay on plan, because `shiftedDates` moves them when you don't. |
-| `schedule.ts` | `baseDates` spreads sessions evenly per week from the start date (3/wk → offsets 0, 2, 4). `shiftedDates` slides the remaining schedule forward so the first incomplete session lands no earlier than a given day. The single place a smarter rescheduler would plug in. |
+| `derive.ts` | `derivePlanView(plan, results, today)` — merges generator output, overrides, results and anchored dates into `SessionView[]` plus `due` / `next` / `endDate`. The single source for "what does this plan look like right now". |
+| `overview.ts` | `deriveOverview(data, today)` — the week ahead across *all* exercises with an active plan, as one `OverviewDay` per calendar day (rest days included, empty). Completed sessions drop out; an overdue session files under today. Only today is a fact: later days assume you stay on plan, because `anchoredDates` moves them when you don't. |
+| `schedule.ts` | `baseDates` spreads sessions evenly per week from the start date (3/wk → offsets 0, 2, 4). `anchoredDates` re-anchors the remaining schedule to the day the last completed session actually happened, keeping the base layout's spacing, floored at a caller-chosen earliest day (`derive.ts` passes today, or tomorrow once today's session is logged). |
 | `generators/` | The algorithm registry. See below. |
 | `stats.ts` | Streak (consecutive sessions, each gap at most twice the plan's average session spacing, capped at 7 days, and still alive today) and lifetime totals, computed across active *and* archived plans of an exercise. |
 | `dates.ts` | ISO-date arithmetic done at UTC noon so DST transitions can't skew day math. |
@@ -131,15 +133,23 @@ session's date is the day it *happens*: a session with `progress` is dated
 its `startedOn`, so one pulled forward ("Do it today" stores empty progress,
 `startSessionEarly`) is due today whatever the plan said, and every consumer
 of the date — status, overview, lists — agrees for free; `scheduledDate`
-keeps what the plan said. One session per day *by default*: once today's
-session is logged, the remaining schedule shifts from *tomorrow*, so finishing
-a behind-schedule session never makes the next one due by itself. Doing more is
+keeps what the plan said. One session per day *by default*: the next session
+lands a full base-layout interval after today's, so finishing a
+behind-schedule session never makes the next one due by itself. Doing more is
 an explicit opt-in via the rest-card offer, on rest days and right after a
-completed session alike, and the pull itself moves only that one session —
-`shiftedDates` never drags the ones after it along. (Completing sessions
-early can still let a behind-schedule plan catch back up: the slid dates
-re-derive toward their base positions, never earlier than the plan's own
-layout.) An untouched pull expires on the midnight sweep.
+completed session alike, and the pull itself moves only that one session
+while it is pending — a completed `Result` is the only thing that moves the
+anchor. Scheduling is *anchored to reality, in both directions*: every
+incomplete session keeps the base layout's spacing, measured from the day the
+last completed session actually happened (walking back past skipped slots,
+which consume their spacing without a Result). Finish three days late and the
+entire rest of the plan, end date included, moves three days later —
+permanently; there is no catching up and no snapping back to the original
+calendar. Finish early and the rest moves earlier by the same rule, so a
+completed pull-forward drags the tail with it. An overdue session is never
+dated in the past: its day floors at today, so each day it sits undone pushes
+the whole future one more day out. An untouched pull expires on the midnight
+sweep.
 
 A partial session — some sets checked off, but the day ended before the rest —
 auto-closes on the next app open or midnight rollover: `finalizeStalePartials`

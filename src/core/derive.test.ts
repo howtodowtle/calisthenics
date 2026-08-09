@@ -40,27 +40,44 @@ describe('derivePlanView', () => {
   })
 
   it('shifts the remaining schedule when behind', () => {
-    // Session 2 was due 07-22; today is 07-26 → due today, rest slides 4 days.
+    // Session 1 was done on schedule, session 2 was due 07-22; today is 07-26
+    // → the floor lands it today, and the rest slides the same 4 days.
     const view = derivePlanView(plan, [result(1, '2026-07-20')], '2026-07-26')
     expect(view.due?.index).toBe(2)
     expect(view.due?.date).toBe('2026-07-26')
     expect(view.sessions[2].date).toBe('2026-07-28')
     expect(view.sessions[0].date).toBe('2026-07-20') // completed: untouched
-    // Base end = start + 13 weeks = 2026-10-19; slides with the 4-day gap.
+    // Base end = start + 13 weeks = 2026-10-19; slides with the 4-day gap —
+    // and one more day for every day the due session sits undone.
     expect(view.endDate).toBe('2026-10-23')
+    expect(derivePlanView(plan, [result(1, '2026-07-20')], '2026-07-27').endDate).toBe('2026-10-24')
   })
 
-  it('keeps the next session off today after logging a behind-schedule session', () => {
-    // Session 1 (due 07-20) was completed late, on 07-26. Session 2's base
-    // date (07-22) is also in the past — but it must not become due the moment
-    // session 1 completes: one session per day, the next lands tomorrow.
+  it('re-anchors the schedule to a late completion — no catch-up', () => {
+    // Session 1 (due 07-20) was completed 6 days late, on 07-26. Session 2
+    // keeps its 2-day spacing from the day session 1 actually happened —
+    // 07-28, not tomorrow — and the whole plan ends 6 days later, for good.
     const view = derivePlanView(plan, [result(1, '2026-07-26')], '2026-07-26')
     expect(view.completedToday).toBe(true)
     expect(view.due).toBeNull()
     expect(view.next?.index).toBe(2)
-    expect(view.next?.date).toBe('2026-07-27')
-    // The whole remaining schedule shifts from tomorrow, not today.
-    expect(view.endDate).toBe('2026-10-24')
+    expect(view.next?.date).toBe('2026-07-28')
+    // Base end = 2026-10-19 + the full 6-day delay.
+    expect(view.endDate).toBe('2026-10-25')
+  })
+
+  it('carries delays cumulatively, always keeping the base spacing', () => {
+    // Session 1 done 3 days late (07-23), session 2 another 2 days beyond its
+    // anchored day (07-27 instead of 07-25) — 5 days of delay in total.
+    const done = [result(1, '2026-07-23'), result(2, '2026-07-27')]
+    const view = derivePlanView(plan, done, '2026-07-28')
+    // Session 3 keeps its 2-day spacing from 07-27 — never "tomorrow to catch up".
+    expect(view.due).toBeNull()
+    expect(view.next?.index).toBe(3)
+    expect(view.next?.date).toBe('2026-07-29')
+    // The 3-day base gap between sessions 3 and 4 (07-24 → 07-27) survives.
+    expect(view.sessions[3].date).toBe('2026-08-01')
+    expect(view.endDate).toBe('2026-10-24') // base end + 5, permanently
   })
 
   it('dates a started session by its first check-off, making it due early', () => {
@@ -85,10 +102,10 @@ describe('derivePlanView', () => {
     expect(view.due?.date).toBe('2026-07-21')
   })
 
-  it('keeps a pulled session due today when the floor schedules it tomorrow ("go again")', () => {
-    // Session 1 was completed late, today (07-26); the one-per-day floor slides
-    // session 2 to tomorrow. Pulling it the same day overrides: startedOn wins,
-    // while scheduledDate keeps the floor's projection honest.
+  it('keeps a pulled session due today when the schedule puts it later ("go again")', () => {
+    // Session 1 was completed late, today (07-26); the anchor puts session 2
+    // two days out. Pulling it the same day overrides: startedOn wins, while
+    // scheduledDate keeps the anchored projection honest.
     const p: Plan = {
       ...plan,
       progress: { sessionIndex: 2, actuals: [null, null, null, null], startedOn: '2026-07-26' },
@@ -97,7 +114,7 @@ describe('derivePlanView', () => {
     expect(view.completedToday).toBe(true)
     expect(view.due?.index).toBe(2)
     expect(view.due?.date).toBe('2026-07-26')
-    expect(view.due?.scheduledDate).toBe('2026-07-27')
+    expect(view.due?.scheduledDate).toBe('2026-07-28')
   })
 
   it('clamps a future startedOn to today, so a clock moved backward cannot lock the session out', () => {
@@ -119,20 +136,32 @@ describe('derivePlanView', () => {
     expect(view.sessions[2].date).toBe('2026-07-24') // keeps its scheduled day
   })
 
-  it('leaves the rest of the schedule untouched after an early double day', () => {
+  it('pulls the rest of the schedule earlier after an early double day', () => {
     // Two Results on one day — the state a completed pull leaves behind (the
-    // pull record itself is gone by now). Nothing else moves, and nothing new
-    // becomes due — doing more is explicit, never automatic.
+    // pull record itself is gone by now). The tail re-anchors to the early
+    // completion: session 3 keeps its 2-day spacing from 07-20 and the whole
+    // plan ends 2 days sooner. Nothing new becomes due today, though — doing
+    // more is explicit, never automatic.
     const done = [result(1, '2026-07-20'), result(2, '2026-07-20')]
     const view = derivePlanView(plan, done, '2026-07-20')
     expect(view.completedToday).toBe(true)
     expect(view.due).toBeNull()
     expect(view.next?.index).toBe(3)
-    expect(view.next?.date).toBe('2026-07-24') // Friday, exactly as scheduled
-    expect(view.endDate).toBe('2026-10-19') // the base end — no shift
+    expect(view.next?.date).toBe('2026-07-22') // two days before its base Friday
+    expect(view.endDate).toBe('2026-10-17') // the base end − 2
   })
 
-  it('treats a skipped session as settled: never due, schedule unmoved', () => {
+  it('does not move the tail for a pending pull — only a Result moves the anchor', () => {
+    // Session 2 pulled to 07-21 but not completed: it happens today, while
+    // session 3 keeps its base day until the pull becomes a Result.
+    const p: Plan = { ...plan, progress: { sessionIndex: 2, actuals: [null, null], startedOn: '2026-07-21' } }
+    const view = derivePlanView(p, [result(1, '2026-07-20')], '2026-07-21')
+    expect(view.sessions[1].date).toBe('2026-07-21')
+    expect(view.sessions[2].date).toBe('2026-07-24')
+    expect(view.endDate).toBe('2026-10-19')
+  })
+
+  it('treats a skipped session as settled: never due, schedule unmoved when the anchor was on time', () => {
     // Session 2's Result was deleted; deleteResult marked it skipped.
     const p: Plan = { ...plan, skipped: [2] }
     const view = derivePlanView(p, [result(1, '2026-07-20')], '2026-07-24')
@@ -140,6 +169,46 @@ describe('derivePlanView', () => {
     expect(view.due?.index).toBe(3)
     expect(view.sessions[2].date).toBe('2026-07-24')
     expect(view.completedCount).toBe(1)
+  })
+
+  it('anchors across a skipped slot, which consumes its spacing', () => {
+    // Session 1 done 3 days late, session 2 skipped: session 3 lands the full
+    // slot-1→slot-3 distance (4 days) after the anchor, not 2 days after it.
+    const p: Plan = { ...plan, skipped: [2] }
+    const view = derivePlanView(p, [result(1, '2026-07-23')], '2026-07-24')
+    expect(view.due).toBeNull()
+    expect(view.next?.index).toBe(3)
+    expect(view.sessions[2].date).toBe('2026-07-27')
+    expect(view.endDate).toBe('2026-10-22') // base end + 3
+  })
+
+  it('re-anchors to the previous Result when the newest one is deleted', () => {
+    // Session 2 was done late, then its Result was deleted: the future
+    // re-derives from session 1's on-time day, floored at today — deleting
+    // the newest fact moves the anchor back to the one before it.
+    const p: Plan = { ...plan, skipped: [2] }
+    const view = derivePlanView(p, [result(1, '2026-07-20')], '2026-08-02')
+    expect(view.due?.index).toBe(3)
+    expect(view.due?.date).toBe('2026-08-02')
+    expect(view.endDate).toBe('2026-10-28') // base end + the 9 days behind
+  })
+
+  it('anchors a future-dated Result at today, so a backward clock cannot lock the plan out', () => {
+    // Logged with the device clock a month ahead, then the clock was fixed:
+    // the session counts as done today, and the plan stays reachable.
+    const view = derivePlanView(plan, [result(1, '2026-09-09')], '2026-08-09')
+    expect(view.due).toBeNull()
+    expect(view.next?.index).toBe(2)
+    expect(view.next?.date).toBe('2026-08-11') // today + the 2-day spacing
+  })
+
+  it('falls back to the base layout when everything before is skipped', () => {
+    // No Result exists to anchor on — the walk-back must cope, not crash.
+    const p: Plan = { ...plan, skipped: [1, 2] }
+    const view = derivePlanView(p, [], '2026-07-25')
+    expect(view.due?.index).toBe(3)
+    expect(view.due?.date).toBe('2026-07-25') // base 07-24 floored at today
+    expect(view.endDate).toBe('2026-10-20')
   })
 
   it('applies overrides and flags the session as edited', () => {

@@ -11,11 +11,11 @@ import type { AppData, Exercise } from './types'
  * answers "what does this plan look like right now"; this answers "what does my
  * week look like", and it does so by regrouping `derivePlanView` output — it
  * owns no scheduling rules of its own. If a session's date is wrong here, it is
- * wrong in `schedule.ts`.
+ * wrong in `derive.ts` or `schedule.ts`.
  *
  * Honesty note: only *today* is a fact. Later days are a projection that
- * assumes you keep up — `shiftedDates` slides the remaining schedule forward
- * from the first incomplete session, so missing today moves everything after
+ * assumes you keep up — the schedule re-anchors to the day each session
+ * actually happens (`anchoredDates`), so missing today moves everything after
  * it by a day. The UI says so; don't present these dates as appointments.
  */
 

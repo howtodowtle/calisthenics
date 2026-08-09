@@ -47,7 +47,7 @@ src/core/            everything that isn't UI — pure TypeScript, fully unit-te
   select.ts          pure queries over the stored blob
   derive.ts          turns stored inputs into the displayed schedule
   overview.ts        the week ahead, all exercises grouped per day
-  schedule.ts        session dates + shift-forward on skipped days
+  schedule.ts        session dates + re-anchoring to the last completed session
   stats.ts           streak / totals
   dates.ts           date arithmetic (DST-safe)
   generators/        training algorithms (registry + one file per algorithm)

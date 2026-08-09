@@ -6,11 +6,9 @@ import { addDays, daysBetween } from './dates'
  * Base layout: sessions spread evenly within each week from the plan start
  * date (3/week → day offsets 0, 2, 4 — a Mon/Wed/Fri feel).
  *
- * Shift-forward: the remaining schedule slides forward so the first
- * incomplete session lands no earlier than a caller-chosen day (the end date
- * moves). The caller owns the policy of what that day is — `derive.ts` floors
- * it at tomorrow once today's session is logged. Nothing is stored;
- * `shiftedDates` is the single place a smarter rescheduler would plug in later.
+ * Re-anchoring: the remaining schedule hangs off the day the last completed
+ * session actually happened — see `anchoredDates`. Nothing is stored;
+ * `derive.ts` picks the anchor from Results and owns the floor (`earliest`).
  */
 
 /**
@@ -37,19 +35,43 @@ export function baseDates(startDate: string, total: number, perWeek: number): st
   })
 }
 
+/** The completed session the remaining schedule hangs off. */
+export interface ScheduleAnchor {
+  /** 0-based position in the schedule array (not the 1-based session index).
+   * Must lie before `firstIncomplete` — the last slot that has a Result. */
+  position: number
+  /** The day it was completed (Result.date) — a fact. */
+  date: string
+}
+
 /**
  * Scheduled (display) date per session, 0-based array aligned with sessions.
- * `firstIncomplete` is the 0-based index of the first session without a
- * result; pass `total` when everything is done. `earliest` is the first day
- * that session may land on — the caller decides what that is.
+ * `firstIncomplete` is the 0-based position of the first session without a
+ * result; pass `total` when everything is done.
+ *
+ * The whole remaining schedule shifts, in either direction, by exactly how
+ * late or early the anchor itself was: every incomplete session sits at
+ * `anchor.date` plus the base layout's distance from the anchor's slot to
+ * its own. A uniform shift preserves every base interval — which is also why
+ * a skipped slot between anchor and next simply consumes its spacing.
+ *
+ * `earliest` floors the landing day of the first incomplete session: an
+ * overdue session is owed now, never dated in the past, and each day it sits
+ * undone slides the whole future one more day out. What that day is belongs
+ * to the caller. Without an anchor (nothing completed yet) the base layout
+ * holds under the same floor — a plan is never pulled before its own start.
  */
-export function shiftedDates(
+export function anchoredDates(
   base: string[],
   firstIncomplete: number,
+  anchor: ScheduleAnchor | null,
   earliest: string,
 ): string[] {
   if (firstIncomplete >= base.length) return base
-  const gap = Math.max(0, daysBetween(base[firstIncomplete], earliest))
+  const gap = Math.max(
+    anchor ? daysBetween(base[anchor.position], anchor.date) : 0,
+    daysBetween(base[firstIncomplete], earliest),
+  )
   if (gap === 0) return base
   return base.map((d, i) => (i < firstIncomplete ? d : addDays(d, gap)))
 }
