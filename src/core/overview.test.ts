@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { previewPlan } from './derive'
 import { countSessions, deriveOverview, OVERVIEW_DAYS } from './overview'
 import type { AppData, Exercise, Plan, Result } from './types'
 
@@ -109,6 +110,21 @@ describe('deriveOverview', () => {
     expect(today.entries.every((e) => e.session.status === 'due')).toBe(true)
   })
 
+  it('projects the anchored schedule, not the original calendar', () => {
+    // Push-ups session 1 was done 2 days late (Wed instead of Mon): the whole
+    // remaining schedule keeps its Mon/Wed/Fri spacing shifted 2 days — it
+    // does not cram onto consecutive days to catch back up.
+    const data = app({
+      plans: [plan('p-push', 'e-push', 3)],
+      results: [result('p-push', 1, '2026-07-22')],
+    })
+    expect(shape(data, '2026-07-23')).toEqual([
+      '2026-07-24: Push-ups',
+      '2026-07-26: Push-ups',
+      '2026-07-29: Push-ups',
+    ])
+  })
+
   it('files an early-started session under today, not its scheduled day', () => {
     // Push-ups session 2 (Wed 07-22) was pulled forward on Tuesday and has a
     // set checked off — it is due, so it belongs to today.
@@ -144,9 +160,12 @@ describe('deriveOverview', () => {
   })
 
   it('is empty when every session is done', () => {
+    // Derive the real total so "every" means every.
+    const p = plan('p-push', 'e-push', 3)
+    const total = previewPlan(p.generatorId, p.params, p.startDate, p.calibrations).count
     const finished = app({
-      plans: [plan('p-push', 'e-push', 3)],
-      results: Array.from({ length: 39 }, (_, i) => result('p-push', i + 1, '2026-07-20')),
+      plans: [p],
+      results: Array.from({ length: total }, (_, i) => result('p-push', i + 1, '2026-07-20')),
     })
     expect(countSessions(deriveOverview(finished, '2026-07-20'))).toBe(0)
   })

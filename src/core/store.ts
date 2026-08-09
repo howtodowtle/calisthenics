@@ -282,8 +282,10 @@ export function completeSession(
 /** Pulls the next session forward ("Do it today" — on a rest day, or a second
  * session after today's): stores it as started today with no sets done, which
  * dates it today and makes it due (see `derivePlanView`). Only this session
- * moves — `shiftedDates` never drags the ones after it along. Left untouched,
- * the pull expires on the midnight sweep like any other empty progress. */
+ * moves while the pull is pending — the ones after it re-anchor only once it
+ * completes into a Result, the one thing that moves the anchor. Left
+ * untouched, the pull expires on the midnight sweep like any other empty
+ * progress. */
 export function startSessionEarly(planId: string, sessionIndex: number, date: string = todayISO()): void {
   update((d) => {
     const p = d.plans.find((x) => x.id === planId)

@@ -21,13 +21,13 @@ export function Help() {
         the rest whenever — or hit <strong>Log all sets</strong> to check the whole session off
         at once. Tapping a checked set undoes it; the session completes when the last set is
         logged. Sets marked <strong>min</strong> and test sessions ask what you actually got —
-        test results recalibrate the rest of the plan. Missed a day? The schedule shifts
-        forward. Started a session but didn't finish? It closes overnight with the sets you
-        did — the rest count as 0 — and the plan moves on. Feeling strong? On a rest day —
-        or right after finishing a session — the card offers the next one:{' '}
-        <strong>Do it today</strong> pulls just that session forward; nothing else moves
-        up, though if you had fallen behind, doing sessions early lets the plan catch
-        back up.
+        test results recalibrate the rest of the plan. Missed a day? The whole schedule
+        moves with you — the rhythm between sessions stays, the end date slides. Started a
+        session but didn't finish? It closes overnight with the sets you did — the rest
+        count as 0 — and the plan moves on. Feeling strong? On a rest day — or right after
+        finishing a session — the card offers the next one:{' '}
+        <strong>Do it today</strong> pulls just that session forward; once you complete
+        it, the rest of the plan moves up to keep its rhythm from that day.
       </p>
 
       <h2>The week ahead</h2>
