@@ -304,7 +304,8 @@ function commitIfComplete(d: AppData, p: Plan, date: string): void {
   const session = progress && effectiveSession(p, progress.sessionIndex)
   if (!progress || !session) return
   const actuals = fitProgress(progress.actuals, session.sets.length)
-  if (!actuals.every((a) => a != null)) return
+  // `every` is vacuously true on a setless session — that is not a finished one.
+  if (!actuals.length || !actuals.every((a) => a != null)) return
   commitResult(d, p, progress.sessionIndex, session.type, session.sets, actuals, date)
 }
 
