@@ -260,25 +260,6 @@ function commitResult(
   if (p.progress?.sessionIndex === sessionIndex) delete p.progress
 }
 
-/** Logs the whole session in one go. `actuals` (aligned with the session's
- * sets) wins when given; otherwise each set falls back to its checked-off
- * progress, then to the planned target. */
-export function completeSession(
-  planId: string,
-  sessionIndex: number,
-  actuals?: number[],
-  date: string = todayISO(),
-): void {
-  update((d) => {
-    const p = d.plans.find((x) => x.id === planId)
-    const session = p && effectiveSession(p, sessionIndex)
-    if (!p || !session) return
-    const progress = progressOf(p, sessionIndex, session.sets.length)
-    const filled = session.sets.map((s, i) => actuals?.[i] ?? progress[i] ?? s.target)
-    commitResult(d, p, sessionIndex, session.type, session.sets, filled, date)
-  })
-}
-
 /** Pulls the next session forward ("Do it today" — on a rest day, or a second
  * session after today's): stores it as started today with no sets done, which
  * dates it today and makes it due (see `derivePlanView`). Only this session
@@ -313,10 +294,10 @@ export function cancelEarlySession(planId: string, sessionIndex: number): void {
   })
 }
 
-/** Checks off a single set of the due session — sets can land one at a time
- * through the day. `actual` defaults to the set's planned target. When the
- * last set lands, the session finalizes into a Result exactly as a one-go
- * log would. */
+/** Checks off a single set of the due session — the only way a session gets
+ * logged, one set at a time through the day. `actual` defaults to the set's
+ * planned target. When the last set lands, the session finalizes into a
+ * Result. */
 export function logSet(
   planId: string,
   sessionIndex: number,

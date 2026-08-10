@@ -562,6 +562,12 @@ button.set-chip:disabled {
   animation: scale-in var(--dur) var(--ease-out-expo);
 }
 
+/* The divider separates list rows; as the last thing in its container (today
+   card, last schedule row) it would just be a stray rule. */
+.session-editor:last-child {
+  border-bottom: none;
+}
+
 /* ---- settings button (fixed top-right — settings is not a tab) ----
    Shared geometry lives in the --fab-* tokens (:root); h1's padding-right
    derives from them, so adding/resizing a button is a one-place change. */

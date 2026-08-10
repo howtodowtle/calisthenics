@@ -46,8 +46,7 @@ Concrete consequences:
 
 | You do | What is stored | What happens on next render |
 |---|---|---|
-| Log a normal session | one `Result` | session shows as done (from the Result), rest re-derives |
-| Check off a single set | `plan.progress` (per-set actuals) | the Today card shows it done; the last set converts progress into a `Result` and clears it |
+| Check off a single set (the only way to log — sets are never logged in bulk) | `plan.progress` (per-set actuals) | the Today card shows it done; the last set converts progress into a `Result` and clears it, and the rest of the schedule re-derives |
 | Log a max test | a `Result` + a `CalibrationPoint` | future targets bend toward your real max |
 | Edit a future day's sets | an override on the plan | that day shows your numbers, survives everything below |
 | Edit plan params mid-plan | new `params` | future re-derives from new params; past untouched |
@@ -116,7 +115,7 @@ importing either.
 
 | Module | Responsibility |
 |---|---|
-| `store.ts` | One `@preact/signals` signal over the whole `AppData` blob; every mutation goes through `update()` which clones, mutates, persists to localStorage. All mutations live here (`createPlan`, `completeSession`, `logSet`, `setOverride`, …) — UI components never touch storage directly. Re-exports `select.ts`. |
+| `store.ts` | One `@preact/signals` signal over the whole `AppData` blob; every mutation goes through `update()` which clones, mutates, persists to localStorage. All mutations live here (`createPlan`, `logSet`, `setOverride`, …) — UI components never touch storage directly. Re-exports `select.ts`. |
 | `select.ts` | Pure `AppData` queries with one owner each: `sortedExercises`, `activePlanFor`, `hasActivePlan`, `plansForExercise`, `resultsForExercise`, `dueExerciseCount`. Separate from `store.ts` so nothing has to import the storage singleton to read the blob. |
 | `derive.ts` | `derivePlanView(plan, results, today)` — merges generator output, overrides, results and anchored dates into `SessionView[]` plus `due` / `next` / `endDate`. The single source for "what does this plan look like right now". |
 | `overview.ts` | `deriveOverview(data, today)` — the week ahead across *all* exercises with an active plan, as one `OverviewDay` per calendar day (rest days included, empty). Completed sessions drop out; an overdue session files under today. Only today is a fact: later days assume you stay on plan, because `anchoredDates` moves them when you don't. |
@@ -255,7 +254,7 @@ update re-renders everything; at this data size that's the simplest correct mode
 | `App.tsx` | Tab bar (Overview first, then one tab per exercise; Settings and Help sit behind fixed buttons top-right, not in the bar), `useToday()` (re-renders on foregrounding / every minute so "today" survives midnight). The open tab persists under `ui.tab.v2`; the overview is the default landing tab. Past ~4 exercises the tabs outgrow the width and the bar scrolls sideways; `useCenterActiveTab` centres the open one, found by its `aria-current` |
 | `Overview.tsx` | The week at a glance — the next 7 days, each listing every exercise's session. Deliberately **read-only**: rows are shortcuts that open the exercise, so logging keeps exactly one home (the Today card). Rest days are omitted; `deriveOverview` returns them, so listing them is a one-line change |
 | `ExerciseTab.tsx` | Composition: today card → stats → chart → schedule → history |
-| `TodayCard.tsx` | Per-set logging: tap a set when you've done it (tap again to undo); the last set completes the session. Max tests and minimum sets prompt for actual numbers; one button logs everything remaining; "Adjust reps" edits today's targets as an override *without* logging the session. The rest card (same file) offers the next session early — "Do it today", also as a second session after one is done; the pull moves only that session |
+| `TodayCard.tsx` | Per-set logging, the only way to log: tap a set when you've done it (tap again to undo); the last set completes the session. There is no bulk log. Max tests and minimum sets prompt for actual numbers; "Adjust reps" edits today's targets as an override (shared `SetGridEditor`) *without* logging the session. The rest card (same file) offers the next session early — "Do it today", also as a second session after one is done; the pull moves only that session |
 | `ScheduleList.tsx` | Upcoming sessions; tapping a row opens an inline editor that stores an override |
 | `HistoryList.tsx` | Past Results, newest first; rows finished within 24h are tappable to correct the logged actuals. Rows swipe left to delete their Result behind a confirm (`SwipeToDelete.tsx` owns the gesture) |
 | `Chart.tsx` | SVG progress chart — planned volume line, done dots, test diamonds, tap/drag crosshair. Colors are `--viz-*` tokens validated for both themes |
