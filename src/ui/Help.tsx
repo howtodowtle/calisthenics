@@ -18,9 +18,8 @@ export function Help() {
       <h2>Day to day</h2>
       <p>
         Your session lives on the Today card. Tap each set as you do it — one in the morning,
-        the rest whenever — or hit <strong>Log all sets</strong> to check the whole session off
-        at once. Tapping a checked set undoes it; the session completes when the last set is
-        logged. Sets marked <strong>min</strong> and test sessions ask what you actually got —
+        the rest whenever. Tapping a checked set undoes it; the session completes when the
+        last set is logged. Sets marked <strong>min</strong> and test sessions ask what you actually got —
         test results recalibrate the rest of the plan. Missed a day? The whole schedule
         moves with you — the rhythm between sessions stays, the end date slides. Started a
         session but didn't finish? It closes overnight with the sets you did — the rest

@@ -2,7 +2,7 @@
 
 A personal progressive-training PWA: push-ups, pull-ups, and any other rep- or
 seconds-based exercise. Pick a goal ("I can do 10 push-ups, I want 100 in 13 weeks"),
-get a full session-by-session schedule, log each workout with one tap. Max-test days
+get a full session-by-session schedule, log each set with one tap. Max-test days
 recalibrate the plan to your real progress.
 
 - **Offline-first PWA** — installs to the iPhone home screen from Safari, works in
