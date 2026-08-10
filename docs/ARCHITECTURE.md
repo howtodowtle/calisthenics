@@ -47,7 +47,7 @@ Concrete consequences:
 | You do | What is stored | What happens on next render |
 |---|---|---|
 | Check off a single set (the only way to log — sets are never logged in bulk) | `plan.progress` (per-set actuals) | the Today card shows it done; the last set converts progress into a `Result` and clears it, and the rest of the schedule re-derives |
-| Log a max test | a `Result` + a `CalibrationPoint` | future targets bend toward your real max |
+| Check off a max test's single set | a `Result` + a `CalibrationPoint` | future targets bend toward your real max |
 | Edit a future day's sets | an override on the plan | that day shows your numbers, survives everything below |
 | Edit plan params mid-plan | new `params` | future re-derives from new params; past untouched |
 | Miss a few days | nothing | the whole remaining schedule, end date included, moves later by the delay and stays there (computed, not stored) |
@@ -254,8 +254,9 @@ update re-renders everything; at this data size that's the simplest correct mode
 | `App.tsx` | Tab bar (Overview first, then one tab per exercise; Settings and Help sit behind fixed buttons top-right, not in the bar), `useToday()` (re-renders on foregrounding / every minute so "today" survives midnight). The open tab persists under `ui.tab.v2`; the overview is the default landing tab. Past ~4 exercises the tabs outgrow the width and the bar scrolls sideways; `useCenterActiveTab` centres the open one, found by its `aria-current` |
 | `Overview.tsx` | The week at a glance — the next 7 days, each listing every exercise's session. Deliberately **read-only**: rows are shortcuts that open the exercise, so logging keeps exactly one home (the Today card). Rest days are omitted; `deriveOverview` returns them, so listing them is a one-line change |
 | `ExerciseTab.tsx` | Composition: today card → stats → chart → schedule → history |
-| `TodayCard.tsx` | Per-set logging, the only way to log: tap a set when you've done it (tap again to undo); the last set completes the session. There is no bulk log. Max tests and minimum sets prompt for actual numbers; "Adjust reps" edits today's targets as an override (shared `SetGridEditor`) *without* logging the session. The rest card (same file) offers the next session early — "Do it today", also as a second session after one is done; the pull moves only that session |
-| `ScheduleList.tsx` | Upcoming sessions; tapping a row opens an inline editor that stores an override |
+| `TodayCard.tsx` | Per-set logging, the only way to log: tap a set when you've done it (tap again to undo); the last set completes the session. There is no bulk log. Max tests and minimum sets prompt for actual numbers; "Adjust reps" opens the shared `TargetsEditor` — an override on today's targets, *without* logging the session. The rest card (same file) offers the next session early — "Do it today", also as a second session after one is done; the pull moves only that session |
+| `ScheduleList.tsx` | Upcoming sessions; tapping a row opens the shared `TargetsEditor` |
+| `TargetsEditor.tsx` | The one editor for a session's targets (schedule row + today card): a `SetGridEditor` that saves an override, with "Revert to plan" when one is already set |
 | `HistoryList.tsx` | Past Results, newest first; rows finished within 24h are tappable to correct the logged actuals. Rows swipe left to delete their Result behind a confirm (`SwipeToDelete.tsx` owns the gesture) |
 | `Chart.tsx` | SVG progress chart — planned volume line, done dots, test diamonds, tap/drag crosshair. Colors are `--viz-*` tokens validated for both themes |
 | `Settings.tsx` | Exercise CRUD, plan lifecycle (create / edit params / stop / delete), self-rendering param forms, JSON backup |

@@ -1,10 +1,10 @@
 import { Check } from 'lucide-preact'
 import { useState } from 'preact/hooks'
 import { countDone, fitProgress, type SessionView } from '../core/derive'
-import { cancelEarlySession, logSet, setOverride, startSessionEarly, undoSet } from '../core/store'
+import { cancelEarlySession, logSet, startSessionEarly, undoSet } from '../core/store'
 import type { Exercise } from '../core/types'
 import { formatDate, SessionBadges, setLabel, unitSuffix } from './format'
-import { SetGridEditor } from './SetGridEditor'
+import { TargetsEditor } from './TargetsEditor'
 
 /**
  * Per-set logging, and only per-set: tap a set the moment you've done it — one
@@ -87,18 +87,10 @@ export function TodayCard({
         <p class="dim">Single set — as many as you can. Result recalibrates the rest of the plan.</p>
       ) : null}
       {mode.kind === 'targets' ? (
-        <SetGridEditor
+        <TargetsEditor
+          session={session}
+          planId={planId}
           header="Adjust today's targets — nothing gets logged."
-          labels={session.sets.map((s, i) => setLabel(s, i, isTest))}
-          initial={session.sets.map((s) => s.target)}
-          min={1}
-          onSave={(values) =>
-            setOverride(
-              planId,
-              session.index,
-              session.sets.map((s, i) => ({ target: values[i], isMinimum: s.isMinimum })),
-            )
-          }
           onClose={() => setMode({ kind: 'view' })}
         />
       ) : (

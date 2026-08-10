@@ -1,9 +1,8 @@
 import { useState } from 'preact/hooks'
 import { isPending, type SessionView } from '../core/derive'
-import { clearOverride, setOverride } from '../core/store'
 import type { Exercise } from '../core/types'
-import { formatDate, maxHint, SessionBadges, setLabel, setsSummary, stagger } from './format'
-import { SetGridEditor } from './SetGridEditor'
+import { formatDate, maxHint, SessionBadges, setsSummary, stagger } from './format'
+import { TargetsEditor } from './TargetsEditor'
 
 /**
  * Upcoming sessions. Tapping a row opens an inline editor; saving stores a
@@ -32,7 +31,13 @@ export function ScheduleList({
         <section>
           {upcoming.map((s, i) =>
             open === s.index ? (
-              <SessionEditor key={s.index} session={s} planId={planId} onClose={() => setOpen(null)} />
+              <TargetsEditor
+                key={s.index}
+                session={s}
+                planId={planId}
+                header={`Session ${s.index} · edit targets`}
+                onClose={() => setOpen(null)}
+              />
             ) : (
               <button
                 key={s.index}
@@ -53,47 +58,5 @@ export function ScheduleList({
         </section>
       </div>
     </>
-  )
-}
-
-function SessionEditor({
-  session,
-  planId,
-  onClose,
-}: {
-  session: SessionView
-  planId: string
-  onClose: () => void
-}) {
-  return (
-    <SetGridEditor
-      header={`Session ${session.index} · edit targets`}
-      labels={session.sets.map((s, i) => setLabel(s, i, false))}
-      initial={session.sets.map((s) => s.target)}
-      min={1}
-      onSave={(values) =>
-        setOverride(
-          planId,
-          session.index,
-          session.sets.map((s, i) => ({ target: values[i], isMinimum: s.isMinimum })),
-        )
-      }
-      onClose={onClose}
-      extra={
-        session.overridden ? (
-          <button
-            class="btn danger"
-            data-variant="ghost"
-            data-size="sm"
-            onClick={() => {
-              clearOverride(planId, session.index)
-              onClose()
-            }}
-          >
-            Revert to plan
-          </button>
-        ) : undefined
-      }
-    />
   )
 }

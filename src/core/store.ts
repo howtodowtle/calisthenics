@@ -177,6 +177,9 @@ export function updatePlanParams(planId: string, params: Record<string, number>)
     // it could never close into a Result, only linger and block the next pull
     // until the midnight sweep. Drop it now.
     if (p.progress && !effectiveSession(p, p.progress.sessionIndex)) delete p.progress
+    // The other side of that coin: fewer sets than are already checked off
+    // leaves a session fully done with no set left to tap. Close it.
+    else commitIfComplete(d, p, todayISO())
   })
 }
 
@@ -215,10 +218,6 @@ export function clearOverride(planId: string, sessionIndex: number): void {
 
 const toResultSets = (sets: SetTemplate[], actuals: number[]): ResultSet[] =>
   sets.map((s, i) => ({ target: s.target, isMinimum: s.isMinimum, actual: actuals[i] }))
-
-/** Stored per-set progress of a session, fitted to the given set count. */
-const progressOf = (p: Plan, sessionIndex: number, count: number): (number | null)[] =>
-  fitProgress(p.progress?.sessionIndex === sessionIndex ? p.progress.actuals : [], count)
 
 /** A max test's calibration point is its single set's actual. One owner for
  * this rule so committing and editing a test can never disagree. */
@@ -294,6 +293,21 @@ export function cancelEarlySession(planId: string, sessionIndex: number): void {
   })
 }
 
+/** Progress covering every set of its session *is* a finished session, so it
+ * commits into a Result. One owner for that rule, because more than one
+ * mutation can complete a session: the last `logSet` normally does it, but so
+ * does a param change that shrinks the set count under existing check-offs.
+ * Nothing else would close that one — sets are only ever logged one at a time,
+ * and there is no set left to tap. */
+function commitIfComplete(d: AppData, p: Plan, date: string): void {
+  const progress = p.progress
+  const session = progress && effectiveSession(p, progress.sessionIndex)
+  if (!progress || !session) return
+  const actuals = fitProgress(progress.actuals, session.sets.length)
+  if (!actuals.every((a) => a != null)) return
+  commitResult(d, p, progress.sessionIndex, session.type, session.sets, actuals, date)
+}
+
 /** Checks off a single set of the due session — the only way a session gets
  * logged, one set at a time through the day. `actual` defaults to the set's
  * planned target. When the last set lands, the session finalizes into a
@@ -309,16 +323,17 @@ export function logSet(
     const p = d.plans.find((x) => x.id === planId)
     const session = p && effectiveSession(p, sessionIndex)
     if (!p || !session || !session.sets[setIndex]) return
-    const actuals = progressOf(p, sessionIndex, session.sets.length)
+    // What's already checked off, fitted to the session's current set count.
+    const actuals = fitProgress(
+      p.progress?.sessionIndex === sessionIndex ? p.progress.actuals : [],
+      session.sets.length,
+    )
     actuals[setIndex] = actual ?? session.sets[setIndex].target
-    if (actuals.every((a) => a != null)) {
-      commitResult(d, p, sessionIndex, session.type, session.sets, actuals, date)
-    } else {
-      // Keep the day of the first check-off; a fresh session claims today.
-      const startedOn =
-        p.progress?.sessionIndex === sessionIndex ? (p.progress.startedOn ?? date) : date
-      p.progress = { sessionIndex, actuals, startedOn }
-    }
+    // Keep the day of the first check-off; a fresh session claims today.
+    const startedOn =
+      p.progress?.sessionIndex === sessionIndex ? (p.progress.startedOn ?? date) : date
+    p.progress = { sessionIndex, actuals, startedOn }
+    commitIfComplete(d, p, date)
   })
 }
 
