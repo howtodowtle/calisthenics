@@ -13,6 +13,18 @@ export interface ExerciseStats {
    * by the plan of the session that opened it.
    */
   streak: number
+  /** Average completed sessions per week, over every week since the program started (see `weeksSpan`). */
+  sessionsPerWeek: number
+  /** Average actuals per week, over every week since the program started (see `weeksSpan`). */
+  actualPerWeek: number
+  /** Lifetime average actuals per completed session. */
+  avgPerSession: number
+  /** Highest actuals total in a single session. */
+  bestSession: number
+  /** Distinct calendar weeks (since the program started) containing at least one session. */
+  weeksTrained: number
+  /** Calendar weeks elapsed since the program started (earliest plan or session), current week included. */
+  weeksSpan: number
 }
 
 /**
@@ -40,12 +52,38 @@ export const flooredMax = (value: number): number => Math.max(1, Math.floor(valu
 export function exerciseStats(results: Result[], plans: Plan[], today: string): ExerciseStats {
   const planById = new Map(plans.map((p) => [p.id, p]))
   const sorted = [...results].sort((a, b) => a.date.localeCompare(b.date))
-  const totalActual = sorted.reduce((sum, r) => sum + sumActual(r.sets), 0)
+  const actuals = sorted.map((r) => sumActual(r.sets))
+  const totalActual = actuals.reduce((sum, a) => sum + a, 0)
+
   let streak = 0
   for (let i = sorted.length - 1; i >= 0; i--) {
     const nextDate = i === sorted.length - 1 ? today : sorted[i + 1].date
     if (daysBetween(sorted[i].date, nextDate) <= streakWindow(planById.get(sorted[i].planId))) streak++
     else break
   }
-  return { sessionsDone: sorted.length, totalActual, streak }
+
+  // The program starts at the earliest plan or, lacking that, the earliest
+  // session — whichever comes first, so a restarted/re-created plan doesn't
+  // reset the clock on lifetime averages.
+  const startDates = [...plans.map((p) => p.startDate), ...sorted.map((r) => r.date)]
+  const programStart = startDates.length ? startDates.reduce((min, d) => (d < min ? d : min)) : undefined
+  const weekIndex = (date: string) => Math.floor(daysBetween(programStart!, date) / 7)
+
+  const sessionsDone = sorted.length
+  const weeksSpan = programStart ? weekIndex(today) + 1 : 0
+  const sessionsPerWeek = weeksSpan > 0 ? sessionsDone / weeksSpan : 0
+  const actualPerWeek = weeksSpan > 0 ? totalActual / weeksSpan : 0
+  const weeksTrained = programStart ? new Set(sorted.map((r) => weekIndex(r.date))).size : 0
+
+  return {
+    sessionsDone,
+    totalActual,
+    streak,
+    sessionsPerWeek,
+    actualPerWeek,
+    avgPerSession: sessionsDone > 0 ? totalActual / sessionsDone : 0,
+    bestSession: actuals.length > 0 ? Math.max(...actuals) : 0,
+    weeksTrained,
+    weeksSpan,
+  }
 }

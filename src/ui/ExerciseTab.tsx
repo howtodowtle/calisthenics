@@ -8,6 +8,15 @@ import { HistoryList } from './HistoryList'
 import { ScheduleList } from './ScheduleList'
 import { RestCard, TodayCard } from './TodayCard'
 
+function Stat({ value, label, index }: { value: string | number; label: string; index: number }) {
+  return (
+    <div class="stat" style={{ animationDelay: `${index * 50}ms` }}>
+      <div class="value">{value}</div>
+      <div class="label">{label}</div>
+    </div>
+  )
+}
+
 export function ExerciseTab({
   exercise,
   today,
@@ -56,18 +65,24 @@ export function ExerciseTab({
           )}
 
           <div class="stats-row">
-            <div class="stat">
-              <div class="value">{stats.streak > 0 ? `🔥 ${stats.streak}` : '—'}</div>
-              <div class="label">streak</div>
-            </div>
-            <div class="stat">
-              <div class="value">{stats.totalActual.toLocaleString()}</div>
-              <div class="label">{exercise.unit === 'seconds' ? 'total secs' : 'total reps'}</div>
-            </div>
-            <div class="stat">
-              <div class="value">{stats.sessionsDone}</div>
-              <div class="label">sessions</div>
-            </div>
+            {[
+              { value: stats.streak > 0 ? `🔥 ${stats.streak}` : '—', label: 'streak' },
+              { value: stats.sessionsDone, label: 'sessions' },
+              { value: `${stats.weeksTrained}/${stats.weeksSpan}`, label: 'weeks trained' },
+              { value: stats.sessionsPerWeek.toFixed(1), label: 'sessions/wk' },
+              {
+                value: stats.totalActual.toLocaleString(),
+                label: exercise.unit === 'seconds' ? 'total secs' : 'total reps',
+              },
+              {
+                value: Math.round(stats.actualPerWeek).toLocaleString(),
+                label: exercise.unit === 'seconds' ? 'secs/wk' : 'reps/wk',
+              },
+              { value: Math.round(stats.avgPerSession).toLocaleString(), label: 'avg/session' },
+              { value: stats.bestSession.toLocaleString(), label: 'best session' },
+            ].map((tile, index) => (
+              <Stat key={tile.label} value={tile.value} label={tile.label} index={index} />
+            ))}
           </div>
 
           <h2>Progress</h2>
