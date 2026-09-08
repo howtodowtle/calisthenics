@@ -61,16 +61,13 @@ export function exerciseStats(results: Result[], plans: Plan[], today: string): 
   }
 
   const sessionsDone = sorted.length
-  let sessionsPerWeek = 0
-  let actualPerWeek = 0
-  let weeksTrained = 0
-  if (sessionsDone > 0) {
-    const firstDate = sorted[0].date
-    const weeksSpan = Math.max(1, daysBetween(firstDate, today) / 7)
-    sessionsPerWeek = sessionsDone / weeksSpan
-    actualPerWeek = totalActual / weeksSpan
-    weeksTrained = new Set(sorted.map((r) => Math.floor(daysBetween(firstDate, r.date) / 7))).size
-  }
+  const firstDate = sorted[0]?.date
+  const weeksSpan = firstDate ? Math.max(1, daysBetween(firstDate, today) / 7) : 0
+  const sessionsPerWeek = weeksSpan > 0 ? sessionsDone / weeksSpan : 0
+  const actualPerWeek = weeksSpan > 0 ? totalActual / weeksSpan : 0
+  const weeksTrained = firstDate
+    ? new Set(sorted.map((r) => Math.floor(daysBetween(firstDate, r.date) / 7))).size
+    : 0
 
   return {
     sessionsDone,
