@@ -85,7 +85,7 @@ describe('exerciseStats streak', () => {
 })
 
 describe('exerciseStats volume', () => {
-  it('is all zero with no results', () => {
+  it('is all zero with no results and no plans', () => {
     const stats = exerciseStats([], [], '2026-07-27')
     expect(stats).toMatchObject({
       sessionsDone: 0,
@@ -95,23 +95,38 @@ describe('exerciseStats volume', () => {
       avgPerSession: 0,
       bestSession: 0,
       weeksTrained: 0,
+      weeksSpan: 0,
     })
   })
 
-  it('averages per week over the span since the first session', () => {
-    // First session 2026-07-20, today 2026-08-03: 14 days = 2 weeks.
+  it('divides by every week since the first session when there is no plan', () => {
+    // First session 2026-07-20, today 2026-08-03: week index 0,1,2 → 3 weeks elapsed.
     const results = [result('2026-07-20'), result('2026-07-27'), result('2026-08-03')]
     const stats = exerciseStats(results, [], '2026-08-03')
-    expect(stats.sessionsPerWeek).toBeCloseTo(1.5) // 3 sessions / 2 weeks
-    expect(stats.actualPerWeek).toBeCloseTo(7.5) // 15 total actual / 2 weeks
+    expect(stats.weeksSpan).toBe(3)
+    expect(stats.weeksTrained).toBe(3) // trained in all 3 weeks
+    expect(stats.sessionsPerWeek).toBeCloseTo(1) // 3 sessions / 3 weeks
+    expect(stats.actualPerWeek).toBeCloseTo(5) // 15 total actual / 3 weeks
     expect(stats.avgPerSession).toBe(5)
     expect(stats.bestSession).toBe(5)
-    expect(stats.weeksTrained).toBe(3)
   })
 
-  it('floors the week span at 1 to avoid inflating a same-day average', () => {
+  it('anchors the denominator to the plan start, not just weeks actually trained', () => {
+    // Plan started 2026-07-01; the one logged session is 19 days later, in
+    // week index 2 (0-based) → 3 weeks have elapsed, but only 1 was trained.
+    const p = [{ ...plan('p1', 3), startDate: '2026-07-01' }]
+    const results = [result('2026-07-20')]
+    const stats = exerciseStats(results, p, '2026-07-20')
+    expect(stats.weeksSpan).toBe(3)
+    expect(stats.weeksTrained).toBe(1)
+    expect(stats.sessionsPerWeek).toBeCloseTo(1 / 3)
+    expect(stats.actualPerWeek).toBeCloseTo(5 / 3)
+  })
+
+  it('counts the current week even on day one', () => {
     const results = [result('2026-07-20')]
     const stats = exerciseStats(results, [], '2026-07-20')
+    expect(stats.weeksSpan).toBe(1)
     expect(stats.sessionsPerWeek).toBe(1)
     expect(stats.actualPerWeek).toBe(5)
     expect(stats.weeksTrained).toBe(1)

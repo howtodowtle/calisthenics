@@ -13,16 +13,18 @@ export interface ExerciseStats {
    * by the plan of the session that opened it.
    */
   streak: number
-  /** Average completed sessions per week since the first session. */
+  /** Average completed sessions per week, over every week since the program started (see `weeksSpan`). */
   sessionsPerWeek: number
-  /** Average actuals per week since the first session. */
+  /** Average actuals per week, over every week since the program started (see `weeksSpan`). */
   actualPerWeek: number
   /** Lifetime average actuals per completed session. */
   avgPerSession: number
   /** Highest actuals total in a single session. */
   bestSession: number
-  /** Distinct calendar weeks (from the first session) containing at least one session. */
+  /** Distinct calendar weeks (since the program started) containing at least one session. */
   weeksTrained: number
+  /** Calendar weeks elapsed since the program started (earliest plan or session), current week included. */
+  weeksSpan: number
 }
 
 /**
@@ -60,14 +62,18 @@ export function exerciseStats(results: Result[], plans: Plan[], today: string): 
     else break
   }
 
+  // The program starts at the earliest plan or, lacking that, the earliest
+  // session — whichever comes first, so a restarted/re-created plan doesn't
+  // reset the clock on lifetime averages.
+  const startDates = [...plans.map((p) => p.startDate), ...sorted.map((r) => r.date)]
+  const programStart = startDates.length ? startDates.reduce((min, d) => (d < min ? d : min)) : undefined
+  const weekIndex = (date: string) => Math.floor(daysBetween(programStart!, date) / 7)
+
   const sessionsDone = sorted.length
-  const firstDate = sorted[0]?.date
-  const weeksSpan = firstDate ? Math.max(1, daysBetween(firstDate, today) / 7) : 0
+  const weeksSpan = programStart ? weekIndex(today) + 1 : 0
   const sessionsPerWeek = weeksSpan > 0 ? sessionsDone / weeksSpan : 0
   const actualPerWeek = weeksSpan > 0 ? totalActual / weeksSpan : 0
-  const weeksTrained = firstDate
-    ? new Set(sorted.map((r) => Math.floor(daysBetween(firstDate, r.date) / 7))).size
-    : 0
+  const weeksTrained = programStart ? new Set(sorted.map((r) => weekIndex(r.date))).size : 0
 
   return {
     sessionsDone,
@@ -78,5 +84,6 @@ export function exerciseStats(results: Result[], plans: Plan[], today: string): 
     avgPerSession: sessionsDone > 0 ? totalActual / sessionsDone : 0,
     bestSession: actuals.length > 0 ? Math.max(...actuals) : 0,
     weeksTrained,
+    weeksSpan,
   }
 }
