@@ -13,6 +13,16 @@ export interface ExerciseStats {
    * by the plan of the session that opened it.
    */
   streak: number
+  /** Average completed sessions per week since the first session. */
+  sessionsPerWeek: number
+  /** Average actuals per week since the first session. */
+  actualPerWeek: number
+  /** Lifetime average actuals per completed session. */
+  avgPerSession: number
+  /** Highest actuals total in a single session. */
+  bestSession: number
+  /** Distinct calendar weeks (from the first session) containing at least one session. */
+  weeksTrained: number
 }
 
 /**
@@ -40,12 +50,36 @@ export const flooredMax = (value: number): number => Math.max(1, Math.floor(valu
 export function exerciseStats(results: Result[], plans: Plan[], today: string): ExerciseStats {
   const planById = new Map(plans.map((p) => [p.id, p]))
   const sorted = [...results].sort((a, b) => a.date.localeCompare(b.date))
-  const totalActual = sorted.reduce((sum, r) => sum + sumActual(r.sets), 0)
+  const actuals = sorted.map((r) => sumActual(r.sets))
+  const totalActual = actuals.reduce((sum, a) => sum + a, 0)
+
   let streak = 0
   for (let i = sorted.length - 1; i >= 0; i--) {
     const nextDate = i === sorted.length - 1 ? today : sorted[i + 1].date
     if (daysBetween(sorted[i].date, nextDate) <= streakWindow(planById.get(sorted[i].planId))) streak++
     else break
   }
-  return { sessionsDone: sorted.length, totalActual, streak }
+
+  const sessionsDone = sorted.length
+  let sessionsPerWeek = 0
+  let actualPerWeek = 0
+  let weeksTrained = 0
+  if (sessionsDone > 0) {
+    const firstDate = sorted[0].date
+    const weeksSpan = Math.max(1, daysBetween(firstDate, today) / 7)
+    sessionsPerWeek = sessionsDone / weeksSpan
+    actualPerWeek = totalActual / weeksSpan
+    weeksTrained = new Set(sorted.map((r) => Math.floor(daysBetween(firstDate, r.date) / 7))).size
+  }
+
+  return {
+    sessionsDone,
+    totalActual,
+    streak,
+    sessionsPerWeek,
+    actualPerWeek,
+    avgPerSession: sessionsDone > 0 ? totalActual / sessionsDone : 0,
+    bestSession: actuals.length > 0 ? Math.max(...actuals) : 0,
+    weeksTrained,
+  }
 }

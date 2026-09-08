@@ -83,3 +83,42 @@ describe('exerciseStats streak', () => {
     expect(exerciseStats(results, [], '2026-07-27').streak).toBe(2)
   })
 })
+
+describe('exerciseStats volume', () => {
+  it('is all zero with no results', () => {
+    const stats = exerciseStats([], [], '2026-07-27')
+    expect(stats).toMatchObject({
+      sessionsDone: 0,
+      totalActual: 0,
+      sessionsPerWeek: 0,
+      actualPerWeek: 0,
+      avgPerSession: 0,
+      bestSession: 0,
+      weeksTrained: 0,
+    })
+  })
+
+  it('averages per week over the span since the first session', () => {
+    // First session 2026-07-20, today 2026-08-03: 14 days = 2 weeks.
+    const results = [result('2026-07-20'), result('2026-07-27'), result('2026-08-03')]
+    const stats = exerciseStats(results, [], '2026-08-03')
+    expect(stats.sessionsPerWeek).toBeCloseTo(1.5) // 3 sessions / 2 weeks
+    expect(stats.actualPerWeek).toBeCloseTo(7.5) // 15 total actual / 2 weeks
+    expect(stats.avgPerSession).toBe(5)
+    expect(stats.bestSession).toBe(5)
+    expect(stats.weeksTrained).toBe(3)
+  })
+
+  it('floors the week span at 1 to avoid inflating a same-day average', () => {
+    const results = [result('2026-07-20')]
+    const stats = exerciseStats(results, [], '2026-07-20')
+    expect(stats.sessionsPerWeek).toBe(1)
+    expect(stats.actualPerWeek).toBe(5)
+    expect(stats.weeksTrained).toBe(1)
+  })
+
+  it('picks the highest single-session total as bestSession', () => {
+    const results = [result('2026-07-20'), { ...result('2026-07-24'), sets: [{ target: 8, isMinimum: false, actual: 12 }] }]
+    expect(exerciseStats(results, [], '2026-07-24').bestSession).toBe(12)
+  })
+})

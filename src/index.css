@@ -342,8 +342,8 @@ button.set-chip:disabled {
 
 .stats-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
 }
 
 .stat {
@@ -351,7 +351,7 @@ button.set-chip:disabled {
   color: var(--card-foreground);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  padding: 14px 10px 11px;
+  padding: 10px 6px 8px;
   text-align: center;
   animation: var(--anim-in);
 }
@@ -364,19 +364,39 @@ button.set-chip:disabled {
   animation-delay: 100ms;
 }
 
+.stat:nth-child(4) {
+  animation-delay: 150ms;
+}
+
+.stat:nth-child(5) {
+  animation-delay: 200ms;
+}
+
+.stat:nth-child(6) {
+  animation-delay: 250ms;
+}
+
+.stat:nth-child(7) {
+  animation-delay: 300ms;
+}
+
+.stat:nth-child(8) {
+  animation-delay: 350ms;
+}
+
 .stat .value {
-  font-size: 1.4rem;
+  font-size: 1.1rem;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
 }
 
 .stat .label {
-  font-size: 0.62rem;
+  font-size: 0.55rem;
   font-weight: 600;
   color: var(--muted-foreground);
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.05em;
   margin-top: 2px;
 }
 
