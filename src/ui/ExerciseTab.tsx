@@ -66,9 +66,9 @@ export function ExerciseTab({
 
           <div class="stats-row">
             {[
-              { value: stats.streak > 0 ? `🔥 ${stats.streak}` : '—', label: 'streak' },
+              { value: stats.streak > 0 ? stats.streak : '—', label: 'streak' },
               { value: stats.sessionsDone, label: 'sessions' },
-              { value: `${stats.weeksTrained}/${stats.weeksSpan}`, label: 'weeks trained' },
+              { value: `${stats.weeksTrained}/${stats.weeksSpan}`, label: 'weeks' },
               { value: stats.sessionsPerWeek.toFixed(1), label: 'sessions/wk' },
               {
                 value: stats.totalActual.toLocaleString(),
